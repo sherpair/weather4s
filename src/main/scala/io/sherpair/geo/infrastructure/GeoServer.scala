@@ -1,4 +1,4 @@
-package io.sherpair.geo
+package io.sherpair.geo.infrastructure
 
 import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
 import io.sherpair.geo.config.Configuration
