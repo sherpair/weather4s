@@ -11,10 +11,10 @@ import com.sksamuel.elastic4s.{ElasticApi, ElasticClient, ElasticDsl, ElasticPro
 import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.cats.effect.instances._
 import com.sksamuel.elastic4s.http.JavaClient
-import com.sksamuel.elastic4s.requests.indexes.IndexRequest
-import com.sksamuel.elastic4s.requests.searches.{SearchRequest, SearchResponse}
+import com.sksamuel.elastic4s.requests.get.{GetRequest, GetResponse}
+import com.sksamuel.elastic4s.requests.indexes.{IndexRequest, IndexResponse}
+import com.sksamuel.elastic4s.requests.searches.SearchResponse
 import com.sksamuel.elastic4s.requests.searches.sort.FieldSort
-import io.sherpair.geo.algebra.Engine
 import io.sherpair.geo.config.Configuration
 import io.sherpair.geo.config.Configuration._
 
@@ -26,6 +26,11 @@ class ElasticEngine[F[_]](elasticClient: ElasticClient)(implicit config: Configu
     } yield response.result.status
 
   def close: F[Unit] = Async[F].delay(elasticClient.close)
+
+  def add(indexRequest: IndexRequest): F[IndexResponse] =
+    for {
+      response <- elasticClient.execute(indexRequest).lift
+    } yield response.result
 
   def addAll(indexRequests: Seq[IndexRequest]): F[Option[String]] =
     for {
@@ -48,25 +53,27 @@ class ElasticEngine[F[_]](elasticClient: ElasticClient)(implicit config: Configu
     Resource.make(lock)(_ => releaseLock).use(_ => f)
   }
 
+  def getById(indexName: String, id: String): F[GetResponse] =
+    for {
+      response <- elasticClient.execute(GetRequest(indexName, id)).lift
+    } yield response.result
+
   def indexExists(name: String): F[Boolean] =
     for {
       response <- elasticClient.execute(ElasticApi.indexExists(name)).lift
     } yield response.result.exists
 
   /*
-   * 0 < size param <= 10,000
+   * 0 < windowSize param <= MaxWindowSize
    */
-  // scalastyle:off magic.number
-  def queryAll(indexName: String, sortBy: Option[Seq[String]], size: Int): F[SearchResponse] = {
-    val _size = Math.max(1, Math.min(10000, size))
+  def queryAll(indexName: String, sortBy: Option[Seq[String]], windowSize: Int): F[SearchResponse] = {
+    val _windowSize = Math.max(1, Math.min(MaxWindowSize, windowSize))
     val sorts: Seq[FieldSort] = sortBy.map(_.map(fieldSort(_))).getOrElse(Seq.empty)
 
     for {
-      response <- elasticClient.execute(search(indexName).query(matchAllQuery()).sortBy(sorts) size _size).lift
+      response <- elasticClient.execute(search(indexName).query(matchAllQuery()).sortBy(sorts) size (_windowSize)).lift
     } yield response.result
   }
-
-  // scalastyle:on magic.number
 
   private def acquireLock(lockAttempts: Int)(implicit timer: Timer[IO]): IO[Any] =
     elasticClient

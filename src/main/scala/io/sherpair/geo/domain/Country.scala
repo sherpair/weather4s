@@ -7,9 +7,10 @@ import com.sksamuel.elastic4s.{Hit, HitReader, Indexable}
 import com.sksamuel.elastic4s.ElasticApi.indexInto
 import com.sksamuel.elastic4s.requests.indexes.IndexRequest
 import com.sksamuel.elastic4s.requests.searches.SearchResponse
-import io.circe.Decoder
-import io.circe.HCursor
+import io.circe.{Decoder, Encoder, HCursor, Json}
+import io.circe.derivation.deriveEncoder
 import io.circe.parser.decode
+import io.circe.syntax._
 
 case class Country(code: String, name: String, updated: Long = epochAsLong)
 
@@ -20,21 +21,23 @@ object Country {
   val jsonFile: String = "countries.json"
 
   val mapping: String =
-    s"""{
-       | "mappings": {
-       |   "properties": {
-       |      "code":    { "type": "text" },
-       |      "name":    { "type": "text" },
-       |      "updated": { "type": "long" }
-       |    }
-       |  }
-       |}""".stripMargin
+    """{
+      | "mappings": {
+      |   "properties": {
+      |      "code":    { "type": "text" },
+      |      "name":    { "type": "text" },
+      |      "updated": { "type": "long" }
+      |    }
+      |  }
+      |}""".stripMargin
+
+  implicit val encoder: Encoder.AsObject[Country] = deriveEncoder[Country]
 
   implicit val indexable: Indexable[Country] = (country: Country) => s"""{
-       | "code":    "${country.code}",
-       | "name":    "${country.name}",
-       | "updated": "${country.updated}"
-       |}""".stripMargin
+      | "code":    "${country.code}",
+      | "name":    "${country.name}",
+      | "updated": "${country.updated}"
+      |}""".stripMargin
 
   implicit val HitReader: HitReader[Country] = (hit: Hit) =>
     Success(
@@ -60,6 +63,8 @@ object Country {
       case Right(countries) => S.delay(countries)
     }
   }
+
+  def encodeToJson[F[_]](countries: Countries)(implicit S: Sync[F]): F[Json] = S.delay(countries.asJson)
 
   def encodeForElastic(indexName: String, countries: Countries): List[IndexRequest] =
     countries.map(country => indexInto(indexName).source(country).id(country.code))

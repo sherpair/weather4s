@@ -2,7 +2,11 @@ package io.sherpair.geo.domain
 
 import scala.util.Success
 
+import cats.effect.Sync
 import com.sksamuel.elastic4s.{Hit, HitReader, Indexable}
+import io.circe.{Encoder, Json}
+import io.circe.derivation.deriveEncoder
+import io.circe.syntax._
 
 case class GeoPoint(lat: Double, long: Double)
 
@@ -13,17 +17,21 @@ object Location {
   val indexName: String = "locations"
 
   val mapping: String =
-    s"""{
-       | "mappings": {
-       |   "properties": {
-       |      "geoId":    { "type": "integer" },
-       |      "name":     { "type": "completion" },
-       |      "location": { "type": "geo_point" },
-       |      "tz":       { "type": "text" },
-       |      "updated":  { "type": "long" }
-       |    }
-       |  }
-       |}""".stripMargin
+    """{
+      | "mappings": {
+      |   "properties": {
+      |      "geoId":    { "type": "integer" },
+      |      "name":     { "type": "completion" },
+      |      "location": { "type": "geo_point" },
+      |      "tz":       { "type": "text" },
+      |      "updated":  { "type": "long" }
+      |    }
+      |  }
+      |}""".stripMargin
+
+  implicit val geoEncoder: Encoder.AsObject[GeoPoint] = deriveEncoder[GeoPoint]
+
+  implicit val locationEncoder: Encoder.AsObject[Location] = deriveEncoder[Location]
 
   implicit val indexable: Indexable[Location] = (location: Location) => s"""{
        | "code":     "${location.geoId}",
@@ -43,6 +51,8 @@ object Location {
         hit.sourceField("updated").toString.toLong
       )
     )
+
+  def encodeToJson[F[_]](locations: Locations)(implicit S: Sync[F]): F[Json] = S.delay(locations.asJson)
 
   implicit class GeoPointConverter(location: String) {
     def toGeoPoint: GeoPoint =

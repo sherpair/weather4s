@@ -4,6 +4,7 @@ object Dependencies {
 
   object version {
     val circe = "0.12.0-RC3"
+    val circeDerivation = "0.12.0-M5"
     val elastic4s = "7.3.0"
     val http4s = "0.21.0-M4"
     val log4cats = "1.0.0-RC1"
@@ -13,9 +14,7 @@ object Dependencies {
   }
 
   lazy val root = Seq(
-    "io.circe" %% "circe-generic" % version.circe,
-    "io.circe" %% "circe-jawn" % version.circe,
-    "io.circe" %% "circe-parser" % version.circe,
+    "io.circe" %% "circe-derivation" % version.circeDerivation,
     "com.sksamuel.elastic4s" %% "elastic4s-core" % version.elastic4s,
     "com.sksamuel.elastic4s" %% "elastic4s-client-esjava" % version.elastic4s, // the default http client
     "com.sksamuel.elastic4s" %% "elastic4s-effect-cats" % version.elastic4s, // for IO (cats) as an alternative executor to Future

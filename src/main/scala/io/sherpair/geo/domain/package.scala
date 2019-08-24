@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter
 package object domain {
 
   type Countries = List[Country]
+  type Locations = List[Location]
 
   val isoPattern = "yyyy-MM-dd HH:mm:ss"
   val isoFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern(isoPattern)
@@ -14,5 +15,6 @@ package object domain {
   val epochAsLong = 0L
 
   def toDate(millis: Long): LocalDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneOffset.UTC)
+  def toIsoDate(millis: Long): String = toDate(millis).format(isoFormatter)
   def toMillis(date: LocalDateTime): Long = date.toInstant(ZoneOffset.UTC).toEpochMilli
 }
