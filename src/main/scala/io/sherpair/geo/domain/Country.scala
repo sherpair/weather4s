@@ -7,6 +7,7 @@ import com.sksamuel.elastic4s.{Hit, HitReader, Indexable}
 import com.sksamuel.elastic4s.ElasticApi.indexInto
 import com.sksamuel.elastic4s.requests.indexes.IndexRequest
 import com.sksamuel.elastic4s.requests.searches.SearchResponse
+import io.chrisdavenport.log4cats.Logger
 import io.circe.{Decoder, Encoder, HCursor, Json}
 import io.circe.derivation.deriveEncoder
 import io.circe.parser.decode
@@ -68,4 +69,10 @@ object Country {
 
   def encodeForElastic(indexName: String, countries: Countries): List[IndexRequest] =
     countries.map(country => indexInto(indexName).source(country).id(country.code))
+
+  def logCountOfCountries[F[_]: Logger](countries: Countries): F[Unit] = {
+    val size = countries.size
+    val loadedFromUser = countries.count(_.updated != epochAsLong)
+    Logger[F].info(s"Countries(${size}):  uploaded(${loadedFromUser}),  not-uploaded-yet(${size - loadedFromUser})")
+  }
 }

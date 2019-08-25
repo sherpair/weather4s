@@ -17,4 +17,6 @@ package object domain {
   def toDate(millis: Long): LocalDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneOffset.UTC)
   def toIsoDate(millis: Long): String = toDate(millis).format(isoFormatter)
   def toMillis(date: LocalDateTime): Long = date.toInstant(ZoneOffset.UTC).toEpochMilli
+
+  def unit: Unit = ()
 }

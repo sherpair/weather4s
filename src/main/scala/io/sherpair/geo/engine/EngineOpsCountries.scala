@@ -8,12 +8,18 @@ import cats.syntax.functor._
 import io.chrisdavenport.log4cats.Logger
 import io.sherpair.geo.domain._
 
-private[engine] class EngineOpsCountry[F[_]](implicit engine: Engine[F], L: Logger[F], S: Sync[F]) {
+private[engine] class EngineOpsCountries[F[_]](implicit engine: Engine[F], L: Logger[F], S: Sync[F]) {
 
   def createIndexIfNotExists: F[Countries] =
     for {
       indexExists <- engine.indexExists(Country.indexName)
-      countries <- if (indexExists) loadCountriesFromEngine else loadCountriesFromResource
+      countries <- if (indexExists) firstLoadOfCountriesFromEngine else firstLoadOfCountriesFromResource
+    } yield countries
+
+  def loadCountries: F[Countries] =
+    for {
+      response <- engine.queryAll(Country.indexName)
+      countries <- S.delay(Country.decodeFromElastic(response))
     } yield countries
 
   private def decodeAndStoreCountries(json: String): F[Countries] =
@@ -25,24 +31,17 @@ private[engine] class EngineOpsCountry[F[_]](implicit engine: Engine[F], L: Logg
       _ <- logCountOfStoredCountriesIfNotAFailure(countries.size, maybeFailure)
     } yield countries
 
-  private def loadCountriesFromEngine: F[Countries] =
+  private def firstLoadOfCountriesFromEngine: F[Countries] =
     for {
       _ <- logIndexStatus("already exists")
-      response <- engine.queryAll(Country.indexName)
-      countries <- S.delay(Country.decodeFromElastic(response))
-      _ <- logCountOfCountries(countries)
+      countries <- loadCountries
+      _ <- Country.logCountOfCountries[F](countries)
     } yield countries
 
-  private def loadCountriesFromResource: F[Countries] =
+  private def firstLoadOfCountriesFromResource: F[Countries] =
     Resource
       .fromAutoCloseable(S.delay(fromResource(Country.jsonFile)))
       .use(source => decodeAndStoreCountries(source.mkString))
-
-  private def logCountOfCountries(countries: Countries): F[Unit] = {
-    val size = countries.size
-    val loadedFromUser = countries.count(_.updated != epochAsLong)
-    L.info(s"Countries(${size}):  uploaded(${loadedFromUser}),  not-uploaded-yet(${size - loadedFromUser})")
-  }
 
   private def logCountOfStoredCountriesIfNotAFailure(size: Int, maybeFailure: Option[String]): F[Unit] =
     if (maybeFailure.isDefined) S.raiseError(GeoError(maybeFailure.get))

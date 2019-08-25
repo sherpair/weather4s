@@ -26,6 +26,7 @@ object Dependencies {
     "io.chrisdavenport" %% "log4cats-slf4j" % version.log4cats,
     "com.github.pureconfig" %% "pureconfig" % version.pureconfig,
     "org.slf4j" % "slf4j-simple" % version.slf4j,
+    "io.chrisdavenport" %% "log4cats-noop" % version.log4cats % "it,test",
     "com.sksamuel.elastic4s" %% "elastic4s-testkit" % version.elastic4s % "it,test",
     "org.scalatest" %% "scalatest" % version.scalatest % "it,test"
   )

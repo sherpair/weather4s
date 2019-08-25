@@ -13,7 +13,7 @@ case class Cluster(name: String)
 case class GlobalLock(attempts: Int, interval: FiniteDuration)
 case class ElasticSearch(cluster: Cluster, host: Host, globalLock: GlobalLock)
 
-case class Configuration(elasticSearch: ElasticSearch, http: Http)
+case class Configuration(cacheHandlerInterval: FiniteDuration, elasticSearch: ElasticSearch, http: Http)
 
 object Configuration {
   def apply(): Configuration = pureconfig.loadConfigOrThrow[Configuration]
