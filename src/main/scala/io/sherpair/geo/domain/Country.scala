@@ -3,6 +3,7 @@ package io.sherpair.geo.domain
 import scala.util.Success
 
 import cats.effect.Sync
+import cats.syntax.applicative._
 import com.sksamuel.elastic4s.{Hit, HitReader, Indexable}
 import com.sksamuel.elastic4s.ElasticApi.indexInto
 import com.sksamuel.elastic4s.requests.indexes.IndexRequest
@@ -14,6 +15,15 @@ import io.circe.parser.decode
 import io.circe.syntax._
 
 case class Country(code: String, name: String, updated: Long = epochAsLong)
+
+case class CountryCount(total: Int, available: Int, notAvailableYet: Int)
+
+object CountryCount {
+  def apply(countries: Countries): CountryCount = {
+    val loadFromUser = countries.count(_.updated != epochAsLong)
+    CountryCount(countries.size, loadFromUser, countries.size - loadFromUser)
+  }
+}
 
 object Country {
   def apply(code: String, name: String): Country = new Country(code, name, epochAsLong)
@@ -51,7 +61,7 @@ object Country {
 
   def decodeFromElastic(response: SearchResponse): Countries = response.to[Country].toList
 
-  def decodeFromJson[F[_]](json: String)(implicit S: Sync[F]): F[Countries] = {
+  def decodeFromJson[F[_]: Sync](json: String): F[Countries] = {
     implicit val decoder: Decoder[Country] =
       (hCursor: HCursor) =>
         for {
@@ -60,8 +70,8 @@ object Country {
         } yield Country(code, name, epochAsLong)
 
     decode[Countries](json) match {
-      case Left(error) => S.raiseError(error)
-      case Right(countries) => S.delay(countries)
+      case Left(error) => Sync[F].raiseError(error)
+      case Right(countries) => countries.pure[F]
     }
   }
 

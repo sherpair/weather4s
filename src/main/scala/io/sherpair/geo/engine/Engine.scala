@@ -9,8 +9,8 @@ trait Engine[F[_]] {
   val DefaultWindowSize = 1000
   val MaxWindowSize = 10000
 
-  def init: F[String]
   def close: F[Unit]
+  def healthCheck: F[String]
 
   def add(indexRequest: IndexRequest): F[IndexResponse]
 

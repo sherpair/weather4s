@@ -20,14 +20,13 @@ object Dependencies {
     "com.sksamuel.elastic4s" %% "elastic4s-effect-cats" % version.elastic4s, // for IO (cats) as an alternative executor to Future
     "com.sksamuel.elastic4s" %% "elastic4s-json-circe" % version.elastic4s,
     "org.http4s" %% "http4s-blaze-server" % version.http4s,
-    "org.http4s" %% "http4s-blaze-client" % version.http4s,
     "org.http4s" %% "http4s-circe" % version.http4s,
     "org.http4s" %% "http4s-dsl" % version.http4s,
     "io.chrisdavenport" %% "log4cats-slf4j" % version.log4cats,
     "com.github.pureconfig" %% "pureconfig" % version.pureconfig,
     "org.slf4j" % "slf4j-simple" % version.slf4j,
-    "io.chrisdavenport" %% "log4cats-noop" % version.log4cats % "it,test",
     "com.sksamuel.elastic4s" %% "elastic4s-testkit" % version.elastic4s % "it,test",
+    "io.chrisdavenport" %% "log4cats-noop" % version.log4cats % "it,test",
     "org.scalatest" %% "scalatest" % version.scalatest % "it,test"
   )
 }

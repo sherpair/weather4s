@@ -4,7 +4,7 @@ lazy val root = (project in file("."))
     organization := "io.sherpair",
     name := "geo-service",
     version := "0.0.1-SNAPSHOT",
-    scalaVersion := "2.12.9",
+    scalaVersion := "2.13.0",
     Defaults.itSettings,
     addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
@@ -15,6 +15,7 @@ parallelExecution in IntegrationTest := false
 trapExit := false
 
 scalacOptions ++= Seq(
+  // "-Ypartial-unification"   // remove for 2.13
   "-deprecation", // warn about use of deprecated APIs
   "-encoding",
   "UTF-8", // source files are in UTF-8
@@ -22,6 +23,5 @@ scalacOptions ++= Seq(
   "-language:higherKinds",
   "-language:postfixOps",
   "-unchecked", // warn about unchecked type parameters
-  "-Xfatal-warnings",
-  "-Ypartial-unification" // remove for 2.13
+  "-Xfatal-warnings"
 )

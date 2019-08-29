@@ -10,14 +10,14 @@ import io.sherpair.geo.config.Configuration
 import io.sherpair.geo.config.Configuration._
 import io.sherpair.geo.domain.{Countries, EngineMeta}
 
-class EngineOps[F[_]](implicit config: Configuration, engine: Engine[F], L: Logger[F], S: Sync[F]) {
+class EngineOps[F[_]] private (implicit config: Configuration, engine: Engine[F], L: Logger[F], S: Sync[F]) {
 
   val engineOpsCountries = new EngineOpsCountries[F]
   val engineOpsMeta = new EngineOpsMeta[F]
 
   def init: F[Cache] =
     for {
-      status <- engine.init
+      status <- engine.healthCheck
       _ <- logEngineStatus(status)
       cache <- engine.execUnderGlobalLock[Cache](createIndexesIfNotExist)
     } yield cache

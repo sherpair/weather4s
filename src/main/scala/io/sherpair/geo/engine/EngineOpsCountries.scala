@@ -11,10 +11,7 @@ import io.sherpair.geo.domain._
 private[engine] class EngineOpsCountries[F[_]](implicit engine: Engine[F], L: Logger[F], S: Sync[F]) {
 
   def createIndexIfNotExists: F[Countries] =
-    for {
-      indexExists <- engine.indexExists(Country.indexName)
-      countries <- if (indexExists) firstLoadOfCountriesFromEngine else firstLoadOfCountriesFromResource
-    } yield countries
+    engine.indexExists(Country.indexName).ifM(firstLoadOfCountriesFromEngine, firstLoadOfCountriesFromResource)
 
   def loadCountries: F[Countries] =
     for {

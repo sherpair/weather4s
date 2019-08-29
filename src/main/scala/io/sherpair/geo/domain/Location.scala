@@ -52,7 +52,7 @@ object Location {
       )
     )
 
-  def encodeToJson[F[_]](locations: Locations)(implicit S: Sync[F]): F[Json] = S.delay(locations.asJson)
+  def encodeToJson[F[_]: Sync](locations: Locations): F[Json] = Sync[F].delay(locations.asJson)
 
   implicit class GeoPointConverter(location: String) {
     def toGeoPoint: GeoPoint =

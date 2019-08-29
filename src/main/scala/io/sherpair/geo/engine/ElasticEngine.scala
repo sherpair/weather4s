@@ -1,11 +1,9 @@
 package io.sherpair.geo.engine
 
-import java.util.concurrent.Executors
-
-import scala.concurrent.ExecutionContext
-
+import cats.Monad
 import cats.effect.{Async, IO, Resource, Timer}
-import cats.syntax.apply._
+import cats.syntax.applicative._
+import cats.syntax.flatMap._
 import cats.syntax.functor._
 import com.sksamuel.elastic4s.{ElasticApi, ElasticClient, ElasticDsl, ElasticProperties}
 import com.sksamuel.elastic4s.ElasticDsl._
@@ -17,15 +15,9 @@ import com.sksamuel.elastic4s.requests.searches.SearchResponse
 import com.sksamuel.elastic4s.requests.searches.sort.FieldSort
 import io.sherpair.geo.config.Configuration
 import io.sherpair.geo.config.Configuration._
+import io.sherpair.geo.domain.GeoError
 
-class ElasticEngine[F[_]](elasticClient: ElasticClient)(implicit config: Configuration, A: Async[F]) extends Engine[F] {
-
-  def init: F[String] =
-    for {
-      response <- elasticClient.execute(clusterHealth()).lift
-    } yield response.result.status
-
-  def close: F[Unit] = Async[F].delay(elasticClient.close)
+class ElasticEngine[F[_]: Async: Timer] private (elasticClient: ElasticClient)(implicit config: Configuration) extends Engine[F] {
 
   def add(indexRequest: IndexRequest): F[IndexResponse] =
     for {
@@ -37,6 +29,8 @@ class ElasticEngine[F[_]](elasticClient: ElasticClient)(implicit config: Configu
       response <- elasticClient.execute(bulk(indexRequests)).lift
     } yield if (response.result.hasFailures) response.body else None
 
+  def close: F[Unit] = Async[F].delay(elasticClient.close)
+
   def count(indexName: String): F[Long] =
     for {
       response <- elasticClient.execute(ElasticApi.count(indexName)).lift
@@ -47,16 +41,22 @@ class ElasticEngine[F[_]](elasticClient: ElasticClient)(implicit config: Configu
       _ <- elasticClient.execute(ElasticDsl.createIndex(name).source(jsonMapping)).lift
     } yield ()
 
-  def execUnderGlobalLock[T](f: => F[T]): F[T] = {
-    implicit val timer = IO.timer(ExecutionContext.fromExecutor(Executors.newCachedThreadPool()))
-    val lock = acquireLock(math.max(1, lockAttempts(config))).lift
-    Resource.make(lock)(_ => releaseLock).use(_ => f)
-  }
+  def execUnderGlobalLock[T](f: => F[T]): F[T] =
+    acquireLock(math.max(1, lockAttempts(config))).ifM(
+      Resource.make(Async[F].unit)(_ => releaseLock).use(_ => f),
+      if (lockGoAhead(config)) f
+      else Async[F].raiseError(GeoError("Can't acquire a global lock for the ES Engine"))
+    )
 
   def getById(indexName: String, id: String): F[GetResponse] =
     for {
       response <- elasticClient.execute(GetRequest(indexName, id)).lift
     } yield response.result
+
+  def healthCheck: F[String] =
+    for {
+      response <- elasticClient.execute(clusterHealth()).lift
+    } yield response.result.status
 
   def indexExists(name: String): F[Boolean] =
     for {
@@ -75,23 +75,31 @@ class ElasticEngine[F[_]](elasticClient: ElasticClient)(implicit config: Configu
     } yield response.result
   }
 
-  private def acquireLock(lockAttempts: Int)(implicit timer: Timer[IO]): IO[Any] =
-    elasticClient
-      .execute(acquireGlobalLock())
-      .handleErrorWith { error =>
-        if (lockAttempts > 0) IO.sleep(lockInterval(config)) *> acquireLock(lockAttempts - 1)
-        else IO.raiseError(error)
-      }
+  private def acquireLock(lockAttempts: Int): F[Boolean] =
+    Monad[F].tailRecM[Int, Boolean](lockAttempts) { lockAttempt =>
+      for {
+        response <- elasticClient.execute(acquireGlobalLock()).lift
+        result <- isGlobalLockAcquired(response.result, lockAttempt).pure[F]
+      } yield result
+    }
+
+  private def isGlobalLockAcquired(acquired: Boolean, lockAttempt: Int): Either[Int, Boolean] =
+    if (acquired) Right[Int, Boolean](true)
+    else if (lockAttempt == 0) Right[Int, Boolean](false)
+    else {
+      Timer[F].sleep(lockInterval(config))
+      Left[Int, Boolean](lockAttempt - 1)
+    }
 
   private def releaseLock: F[Unit] = elasticClient.execute(releaseGlobalLock()).map(_ => ()).lift
 
-  implicit class IOLifter[A](val io: IO[A]) {
+  private implicit class IOLifter[A](val io: IO[A]) {
     def lift: F[A] = Async[F].liftIO(io)
   }
 }
 
 object ElasticEngine {
-  def apply[F[_]](implicit config: Configuration, A: Async[F]): ElasticEngine[F] = {
+  def apply[F[_]: Async: Timer](implicit config: Configuration): ElasticEngine[F] = {
     val cluster: String = s"cluster.name=${clusterName(config)}"
     val host = config.elasticSearch.host
 

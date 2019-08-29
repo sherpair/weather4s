@@ -9,7 +9,10 @@ import io.sherpair.geo.config.Configuration
 import io.sherpair.geo.domain.{unit, Country, EngineMeta}
 import io.sherpair.geo.engine.EngineOps
 
-class CacheHandler[F[_]: Logger: Sync: Timer](cacheRef: CacheRef[F])(implicit config: Configuration, engineOps: EngineOps[F]) {
+class CacheHandler[F[_]: Logger: Sync: Timer] private (cacheRef: CacheRef[F])(
+    implicit config: Configuration,
+    engineOps: EngineOps[F]
+) {
 
   def start: F[Unit] =
     Monad[F].tailRecM[Unit, Unit](unit) { _ =>
@@ -24,7 +27,7 @@ class CacheHandler[F[_]: Logger: Sync: Timer](cacheRef: CacheRef[F])(implicit co
       engineMeta <- engineOps.loadEngineMeta
       lastCacheRenewal <- cacheRef.lastCacheRenewal
       _ <- checkIfCacheRenewalIsNeeded(engineMeta, lastCacheRenewal)
-    } yield Left(unit)
+    } yield unit
 
   private def checkIfCacheRenewalIsNeeded(engineMeta: EngineMeta, lastCacheRenewal: Long): F[Unit] =
     if (engineMeta.lastEngineUpdate <= lastCacheRenewal) Sync[F].unit

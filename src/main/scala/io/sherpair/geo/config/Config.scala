@@ -10,7 +10,7 @@ case class Host(address: String, port: Int)
 case class Http(host: Host)
 
 case class Cluster(name: String)
-case class GlobalLock(attempts: Int, interval: FiniteDuration)
+case class GlobalLock(attempts: Int, interval: FiniteDuration, goAheadEvenIfNotAcquired: Boolean)
 case class ElasticSearch(cluster: Cluster, host: Host, globalLock: GlobalLock)
 
 case class Configuration(cacheHandlerInterval: FiniteDuration, elasticSearch: ElasticSearch, http: Http)
@@ -21,5 +21,6 @@ object Configuration {
   def clusterName(config: Configuration): String = config.elasticSearch.cluster.name
 
   def lockAttempts(config: Configuration): Int = config.elasticSearch.globalLock.attempts
+  def lockGoAhead(config: Configuration): Boolean = config.elasticSearch.globalLock.goAheadEvenIfNotAcquired
   def lockInterval(config: Configuration): FiniteDuration = config.elasticSearch.globalLock.interval
 }

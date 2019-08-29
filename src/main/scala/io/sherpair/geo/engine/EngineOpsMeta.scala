@@ -9,10 +9,7 @@ import io.sherpair.geo.domain._
 private[engine] class EngineOpsMeta[F[_]](implicit engine: Engine[F], L: Logger[F], S: Sync[F]) {
 
   def createIndexIfNotExists: F[EngineMeta] =
-    for {
-      indexExists <- engine.indexExists(EngineMeta.indexName)
-      engineMeta <- if (indexExists) firstEngineMetaLoad else initialiseEngineMeta
-    } yield engineMeta
+    engine.indexExists(EngineMeta.indexName).ifM(firstEngineMetaLoad, initialiseEngineMeta)
 
   def loadEngineMeta: F[EngineMeta] =
     for {

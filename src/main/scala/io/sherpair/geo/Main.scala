@@ -5,7 +5,6 @@ import io.chrisdavenport.log4cats.Logger
 import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 import io.sherpair.geo.config.Configuration
 import io.sherpair.geo.engine.{ElasticEngine, Engine}
-import io.sherpair.geo.infrastructure.Resources
 import org.slf4j.LoggerFactory
 
 object Main extends IOApp {
