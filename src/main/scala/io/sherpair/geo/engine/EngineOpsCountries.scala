@@ -10,22 +10,22 @@ import io.sherpair.geo.domain._
 
 private[engine] class EngineOpsCountries[F[_]](implicit engine: Engine[F], L: Logger[F], S: Sync[F]) {
 
-  def createIndexIfNotExists: F[Countries] =
-    engine.indexExists(Country.indexName).ifM(firstLoadOfCountriesFromEngine, firstLoadOfCountriesFromResource)
+  private val jsonFile: String = "countries.json"
 
-  def loadCountries: F[Countries] =
-    for {
-      response <- engine.queryAll(Country.indexName)
-      countries <- S.delay(Country.decodeFromElastic(response))
-    } yield countries
+  private val engineCountry = engine.engineCountry
+
+  def createIndexIfNotExists: F[Countries] =
+    engine.indexExists(engineCountry.indexName).ifM(firstLoadOfCountriesFromEngine, firstLoadOfCountriesFromResource)
+
+  def loadCountries: F[Countries] = engineCountry.loadAll()
 
   private def decodeAndStoreCountries(json: String): F[Countries] =
     for {
       countries <- Country.decodeFromJson[F](json)
-      _ <- engine.createIndex(Country.indexName, Country.mapping)
+      _ <- engine.createIndex(engineCountry.indexName)
       _ <- logIndexStatus("was created")
-      maybeFailure <- engine.addAll(Country.encodeForElastic(Country.indexName, countries))
-      _ <- logCountOfStoredCountriesIfNotAFailure(countries.size, maybeFailure)
+      listOfBulkErrors <- engineCountry.addInBulk(countries)
+      _ <- logCountOfStoredCountriesIfNoErrors(countries.size, listOfBulkErrors)
     } yield countries
 
   private def firstLoadOfCountriesFromEngine: F[Countries] =
@@ -37,13 +37,15 @@ private[engine] class EngineOpsCountries[F[_]](implicit engine: Engine[F], L: Lo
 
   private def firstLoadOfCountriesFromResource: F[Countries] =
     Resource
-      .fromAutoCloseable(S.delay(fromResource(Country.jsonFile)))
+      .fromAutoCloseable(S.delay(fromResource(jsonFile)))
       .use(source => decodeAndStoreCountries(source.mkString))
 
-  private def logCountOfStoredCountriesIfNotAFailure(size: Int, maybeFailure: Option[String]): F[Unit] =
-    if (maybeFailure.isDefined) S.raiseError(GeoError(maybeFailure.get))
+  private def logCountOfStoredCountriesIfNoErrors(size: Int, listOfBulkErrors: List[BulkError]): F[Unit] =
+    if (listOfBulkErrors.nonEmpty) {
+      S.raiseError(GeoError(listOfBulkErrors.mkString("One or more fatal errors while storing countries to the engine:\n", ",\n", "\n")))
+    }
     else L.info(s"Countries not-uploaded-yet(${size})")
 
   private def logIndexStatus(status: String): F[Unit] =
-    L.info(s"Index(${Country.indexName}) ${status}")
+    L.info(s"Index(${engineCountry.indexName}) ${status}")
 }

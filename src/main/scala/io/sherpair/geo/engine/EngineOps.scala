@@ -8,7 +8,7 @@ import io.chrisdavenport.log4cats.Logger
 import io.sherpair.geo.cache.Cache
 import io.sherpair.geo.config.Configuration
 import io.sherpair.geo.config.Configuration._
-import io.sherpair.geo.domain.{Countries, EngineMeta}
+import io.sherpair.geo.domain.{Countries, Meta}
 
 class EngineOps[F[_]] private (implicit config: Configuration, engine: Engine[F], L: Logger[F], S: Sync[F]) {
 
@@ -25,15 +25,15 @@ class EngineOps[F[_]] private (implicit config: Configuration, engine: Engine[F]
   def close: F[Unit] =
     L.info(s"Closing connection with ES cluster(${clusterName(config)})") *> engine.close
 
-  def loadEngineMeta: F[EngineMeta] = engineOpsMeta.loadEngineMeta
+  def loadMeta: F[Meta] = engineOpsMeta.loadMeta
 
   def loadCountries: F[Countries] = engineOpsCountries.loadCountries
 
   private def createIndexesIfNotExist: F[Cache] =
     for {
       countries <- engineOpsCountries.createIndexIfNotExists
-      engineMeta <- engineOpsMeta.createIndexIfNotExists
-    } yield Cache(engineMeta.lastEngineUpdate, countries)
+      meta <- engineOpsMeta.createIndexIfNotExists
+    } yield Cache(meta.lastEngineUpdate, countries)
 
   private def logEngineStatus(status: String): F[Unit] = {
     val color = status.toLowerCase match {

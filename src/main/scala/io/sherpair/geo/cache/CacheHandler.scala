@@ -6,7 +6,7 @@ import cats.syntax.flatMap._
 import cats.syntax.functor._
 import io.chrisdavenport.log4cats.Logger
 import io.sherpair.geo.config.Configuration
-import io.sherpair.geo.domain.{unit, Country, EngineMeta}
+import io.sherpair.geo.domain.{unit, Country, Meta}
 import io.sherpair.geo.engine.EngineOps
 
 class CacheHandler[F[_]: Logger: Sync: Timer] private (cacheRef: CacheRef[F])(
@@ -24,20 +24,20 @@ class CacheHandler[F[_]: Logger: Sync: Timer] private (cacheRef: CacheRef[F])(
 
   private def checkIfCacheRenewalIsNeeded: F[Unit] =
     for {
-      engineMeta <- engineOps.loadEngineMeta
+      meta <- engineOps.loadMeta
       lastCacheRenewal <- cacheRef.lastCacheRenewal
-      _ <- checkIfCacheRenewalIsNeeded(engineMeta, lastCacheRenewal)
+      _ <- checkIfCacheRenewalIsNeeded(meta, lastCacheRenewal)
     } yield unit
 
-  private def checkIfCacheRenewalIsNeeded(engineMeta: EngineMeta, lastCacheRenewal: Long): F[Unit] =
-    if (engineMeta.lastEngineUpdate <= lastCacheRenewal) Sync[F].unit
-    else cacheRenewal(engineMeta.lastEngineUpdate)
+  private def checkIfCacheRenewalIsNeeded(meta: Meta, lastCacheRenewal: Long): F[Unit] =
+    if (meta.lastEngineUpdate <= lastCacheRenewal) Sync[F].unit
+    else cacheRenewal(meta)
 
-  private def cacheRenewal(lastEngineUpdate: Long): F[Unit] =
+  private def cacheRenewal(meta: Meta): F[Unit] =
     for {
       countries <- engineOps.loadCountries
-      _ <- cacheRef.cacheRenewal(Cache(lastEngineUpdate, countries))
-      _ <- EngineMeta.logLastEngineUpdate(lastEngineUpdate)
+      _ <- cacheRef.cacheRenewal(Cache(meta.lastEngineUpdate, countries))
+      _ <- meta.logLastEngineUpdate
       _ <- Country.logCountOfCountries[F](countries)
     } yield unit
 }

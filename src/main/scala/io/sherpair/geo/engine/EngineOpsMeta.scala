@@ -8,30 +8,28 @@ import io.sherpair.geo.domain._
 
 private[engine] class EngineOpsMeta[F[_]](implicit engine: Engine[F], L: Logger[F], S: Sync[F]) {
 
-  def createIndexIfNotExists: F[EngineMeta] =
-    engine.indexExists(EngineMeta.indexName).ifM(firstEngineMetaLoad, initialiseEngineMeta)
+  private val engineMeta = engine.engineMeta
 
-  def loadEngineMeta: F[EngineMeta] =
-    for {
-      response <- engine.getById(EngineMeta.indexName, EngineMeta.id)
-      engineMeta <- S.delay(EngineMeta.decodeFromElastic(response))
-    } yield engineMeta
+  def createIndexIfNotExists: F[Meta] =
+    engine.indexExists(engineMeta.indexName).ifM(firstMetaLoad, initialiseMeta)
 
-  private def firstEngineMetaLoad: F[EngineMeta] =
+  def loadMeta: F[Meta] = engineMeta.getById
+
+  private def firstMetaLoad: F[Meta] =
     for {
       _ <- logIndexStatus("already exists")
-      engineMeta <- loadEngineMeta
-      _ <- L.info(s"Last Engine update at(${toIsoDate(engineMeta.lastEngineUpdate)})")
-    } yield engineMeta
+      meta <- loadMeta
+      _ <- L.info(s"Last Engine update at(${toIsoDate(meta.lastEngineUpdate)})")
+    } yield meta
 
-  private def initialiseEngineMeta: F[EngineMeta] =
+  private def initialiseMeta: F[Meta] =
     for {
-      _ <- engine.createIndex(EngineMeta.indexName, EngineMeta.mapping)
+      _ <- engine.createIndex(engineMeta.indexName)
       _ <- logIndexStatus("was created")
-      engineMeta = EngineMeta(epochAsLong)
-      _ <- engine.add(EngineMeta.encodeForElastic(EngineMeta.indexName, engineMeta))
-    } yield engineMeta
+      meta = Meta(epochAsLong)
+      _ <- engineMeta.upsert(meta)
+    } yield meta
 
   private def logIndexStatus(status: String): F[Unit] =
-    L.info(s"Index(${EngineMeta.indexName}) ${status}")
+    L.info(s"Index(${engineMeta.indexName}) ${status}")
 }
