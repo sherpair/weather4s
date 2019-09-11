@@ -3,12 +3,13 @@ package io.sherpair.geo.domain
 import scala.util.Success
 
 import cats.effect.Sync
+import cats.syntax.applicative._
 import com.sksamuel.elastic4s.{Hit, HitReader, Indexable}
 import io.circe.{Encoder, Json}
 import io.circe.derivation.deriveEncoder
 import io.circe.syntax._
 
-case class GeoPoint(lat: Double, long: Double)
+case class GeoPoint(latitude: Double, longitude: Double)
 
 case class Location(geoId: Int, name: String, location: GeoPoint, tz: String, updated: Long = epochAsLong)
 
@@ -33,13 +34,14 @@ object Location {
 
   implicit val locationEncoder: Encoder.AsObject[Location] = deriveEncoder[Location]
 
-  implicit val indexable: Indexable[Location] = (location: Location) => s"""{
-       | "code":     "${location.geoId}",
-       | "name":     "${location.name}",
-       | "location": "${location.location}",
-       | "tz":       "${location.tz}",
-       | "update":   "${location.updated}"
-       |}""".stripMargin
+  implicit val indexable: Indexable[Location] = (location: Location) =>
+    s"""{
+      | "code":     "${location.geoId}",
+      | "name":     "${location.name}",
+      | "location": "${location.location}",
+      | "tz":       "${location.tz}",
+      | "update":   "${location.updated}"
+      |}""".stripMargin
 
   implicit val HitReader: HitReader[Location] = (hit: Hit) =>
     Success(
@@ -52,12 +54,12 @@ object Location {
       )
     )
 
-  def encodeToJson[F[_]: Sync](locations: Locations): F[Json] = Sync[F].delay(locations.asJson)
+  def encodeToJson[F[_]: Sync](locations: Locations): F[Json] = locations.asJson.pure[F]
 
   implicit class GeoPointConverter(location: String) {
     def toGeoPoint: GeoPoint =
       location.split("'") match {
-        case Array(lat, lon) => GeoPoint(lat.toDouble, lon.toDouble)
+        case Array(latitude, longitude) => GeoPoint(latitude.toDouble, longitude.toDouble)
       }
   }
 }

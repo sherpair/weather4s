@@ -8,9 +8,9 @@ trait Engine[F[_]] {
 
   def createIndex(name: String, jsonMapping: Option[String] = None): F[Unit]
 
-  def engineCountry: EngineCountry[F]
+  def engineCountry: F[EngineCountry[F]]
 
-  def engineMeta: EngineMeta[F]
+  def engineMeta: F[EngineMeta[F]]
 
   def execUnderGlobalLock[T](f: => F[T]): F[T]
 

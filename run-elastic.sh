@@ -2,8 +2,8 @@
 
 # Port 1358 is used by the DejaVu GUI client
 
-ES_VERSION="7.2.0"
-GEO_CONTAINER="es720geo"
+ES_VERSION="7.3.1"
+GEO_CONTAINER="es731geo"
 
 VOLUME="${HOME}/docker/volumes/${GEO_CONTAINER}"
 

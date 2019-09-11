@@ -1,25 +1,24 @@
 package io.sherpair.geo.http
 
-import cats.effect.{Concurrent, ConcurrentEffect, ContextShift, Resource, Timer}
-import io.sherpair.geo.config.Configuration
-import io.sherpair.geo.engine.EngineOps
+import cats.effect.{Concurrent, ConcurrentEffect, ContextShift, Fiber, Timer}
+import cats.effect.syntax.concurrent._
+import cats.syntax.functor._
+import io.sherpair.geo.config.Host
 import org.http4s.{HttpApp, HttpRoutes}
-import org.http4s.server.{Router, Server}
+import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.{CORS, Logger}
 import org.http4s.syntax.kleisli._
 
 object GeoServer {
 
-  def describe[F[_]: ConcurrentEffect: ContextShift: Timer](
-      routes: Seq[HttpRoutes[F]]
-  )(implicit config: Configuration, engineOps: EngineOps[F]): Resource[F, Server[F]] =
-    for {
+  def describe[F[_]: ConcurrentEffect: ContextShift: Timer](host: Host, routes: Seq[HttpRoutes[F]]): F[Fiber[F, Unit]] =
+    (for {
       server <- BlazeServerBuilder[F]
-        .bindHttp(config.http.host.port, config.http.host.address)
+        .bindHttp(host.port, host.address)
         .withHttpApp(withMiddleware[F](routes))
-        .resource
-    } yield server
+        .serve.compile.drain
+    } yield server).start
 
   private def withMiddleware[F[_]: Concurrent](routes: Seq[HttpRoutes[F]]): HttpApp[F] =
     Logger.httpApp(true, true)(CORS(Router(routes.map(("/", _)): _*)).orNotFound)

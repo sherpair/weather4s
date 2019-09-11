@@ -4,16 +4,17 @@ import cats.effect.Sync
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import io.circe.Json
-import io.circe.syntax._
+import io.circe.syntax.EncoderOps
 import io.sherpair.geo.cache.CacheRef
-import io.sherpair.geo.domain.{Countries, Country}
+import io.sherpair.geo.domain.{Countries, Country, CountryCount}
 import org.http4s.{HttpRoutes, Response}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 
 class CountryApp[F[_]: Sync](cacheRef: CacheRef[F]) extends Http4sDsl[F] {
 
-  implicit val encoder = jsonEncoderOf[F, Country]
+  implicit val countryEncoder = jsonEncoderOf[F, Country]
+  implicit val countryCountEncoder = jsonEncoderOf[F, CountryCount]
 
   def routes: HttpRoutes[F] = HttpRoutes.of[F] {
     case GET -> Root / "countries" => Ok(count)
@@ -38,18 +39,9 @@ class CountryApp[F[_]: Sync](cacheRef: CacheRef[F]) extends Http4sDsl[F] {
       case _ => Conflict("Country already available")
     }).getOrElse(NotFound())
 
-  private def availableCountries: F[Json] =
-    cacheRef.availableCountries
-      .map(countries => countries.asJson)
+  private def availableCountries: F[Json] = cacheRef.availableCountries.map(countries => countries.asJson)
 
-  private def count: F[Json] =
-    cacheRef.countryCount.map { countryCount =>
-      Map(
-        "total" -> countryCount.total,
-        "available" -> countryCount.available,
-        "not available yet" -> countryCount.notAvailableYet
-      ).asJson
-    }
+  private def count: F[Json] = cacheRef.countryCount.map(_.asJson)
 
   private def countriesNotAvailableYet: F[Json] =
     cacheRef.countriesNotAvailableYet.map(countries => countries.asJson)

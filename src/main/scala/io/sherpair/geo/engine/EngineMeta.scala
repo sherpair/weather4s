@@ -4,9 +4,12 @@ import io.sherpair.geo.domain.Meta
 
 trait EngineMeta[F[_]] {
 
-  val indexName: String = "meta"
-
-  def getById: F[Meta]
+  def getById: F[Option[Meta]]
 
   def upsert(meta: Meta): F[String]
+}
+
+object EngineMeta {
+
+  val indexName: String = "meta"
 }

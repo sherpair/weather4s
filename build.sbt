@@ -11,7 +11,7 @@ lazy val root = (project in file("."))
     libraryDependencies ++= Dependencies.root
   )
 
-parallelExecution in IntegrationTest := false
+// parallelExecution in IntegrationTest := false
 trapExit := false
 
 scalacOptions ++= Seq(
@@ -23,5 +23,8 @@ scalacOptions ++= Seq(
   "-language:higherKinds",
   "-language:postfixOps",
   "-unchecked", // warn about unchecked type parameters
+  "-Ywarn-dead-code",
+  "-Ywarn-numeric-widen",
+  "-Ywarn-value-discard",
   "-Xfatal-warnings"
 )

@@ -2,10 +2,9 @@ package io.sherpair.geo.domain
 
 import cats.effect.Sync
 import cats.syntax.applicative._
-import io.chrisdavenport.log4cats.Logger
 import io.circe.{Decoder, Encoder, HCursor}
 import io.circe.derivation.{deriveDecoder, deriveEncoder}
-import io.circe.parser.decode
+import io.circe.jawn.decode
 
 case class Country(code: String, name: String, updated: Long = epochAsLong)
 
@@ -16,10 +15,16 @@ object CountryCount {
     val loadFromUser = countries.count(_.updated != epochAsLong)
     CountryCount(countries.size, loadFromUser, countries.size - loadFromUser)
   }
+
+  implicit val decoder: Decoder[CountryCount] = deriveDecoder[CountryCount]
+  implicit val encoder: Encoder[CountryCount] = deriveEncoder[CountryCount]
 }
 
 object Country {
   def apply(code: String, name: String): Country = new Country(code, name, epochAsLong)
+
+  val numberOfCountries = 245
+  val requirement = s"Something wrong happened!! Countries should be at least ${numberOfCountries}"
 
   implicit val decoder: Decoder[Country] = deriveDecoder[Country]
   implicit val encoder: Encoder[Country] = deriveEncoder[Country]
@@ -36,11 +41,5 @@ object Country {
       case Left(error) => Sync[F].raiseError(error)
       case Right(countries) => countries.pure[F]
     }
-  }
-
-  def logCountOfCountries[F[_]: Logger](countries: Countries): F[Unit] = {
-    val size = countries.size
-    val loadedFromUser = countries.count(_.updated != epochAsLong)
-    Logger[F].info(s"Countries(${size}):  uploaded(${loadedFromUser}),  not-uploaded-yet(${size - loadedFromUser})")
   }
 }

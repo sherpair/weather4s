@@ -2,6 +2,7 @@ package io.sherpair.geo.engine.elastic
 
 import cats.effect.Async
 import cats.syntax.functor._
+import cats.syntax.option._
 import com.sksamuel.elastic4s.ElasticClient
 import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.cats.effect.instances._
@@ -12,40 +13,26 @@ import io.sherpair.geo.config.Configuration
 import io.sherpair.geo.config.Configuration.defaultWindowSize
 import io.sherpair.geo.domain.{BulkError, Countries, Country}
 import io.sherpair.geo.engine.EngineCountry
+import io.sherpair.geo.engine.EngineCountry.indexName
 
 class ElasticEngineCountry[F[_]: Async] private[elastic] (elasticClient: ElasticClient)(implicit C: Configuration)
-    extends EngineCountry[F] {
+  extends EngineCountry[F] {
 
-  def addInBulk(countries: Countries): F[List[BulkError]] =
-    for {
-      response <- elasticClient
-        .execute(bulk {
-          for (country <- countries) yield (update(country.code) in indexName).docAsUpsert(country)
-        })
-        .lift
-    } yield getBulkFailuresIfAny(response.result.failures)
+  // scalastyle:off magic.number
+  private val MaxWindowSize: Int = 10000
+  // scalastyle:on magic.number
 
-  def getById(id: String): F[Country] =
+  // Test-only. Not used by the app.
+  override def getById(id: String): F[Option[Country]] =
     for {
       response <- elasticClient.execute(GetRequest(indexName, id)).lift
-    } yield response.result.to[Country]
-
-  def jsonMapping: String =
-    """{
-      | "mappings": {
-      |   "properties": {
-      |      "code":    { "type": "text" },
-      |      "name":    { "type": "text" },
-      |      "updated": { "type": "long" }
-      |    }
-      |  }
-      |}""".stripMargin
+    } yield if (response.result.exists) response.result.to[Country].some else None
 
   /*
    * 0 < windowSize param <= MaxWindowSize
    */
-  def loadAll(sortBy: Option[Seq[String]], windowSize: Int = defaultWindowSize(C)): F[Countries] = {
-    val _windowSize = Math.max(1, Math.min(MaxWindowSize, windowSize))
+  override def loadAll(sortBy: Option[Seq[String]], windowSize: Int = defaultWindowSize(C)): F[Countries] = {
+    val _windowSize = 1.max(MaxWindowSize.min(windowSize))
     val sorts: Seq[FieldSort] = sortBy.map(_.map(fieldSort(_))).getOrElse(Seq.empty)
 
     for {
@@ -53,11 +40,21 @@ class ElasticEngineCountry[F[_]: Async] private[elastic] (elasticClient: Elastic
     } yield response.result.to[Country].toList
   }
 
-  def upsert(country: Country): F[String] =
+  override def saveAll(countries: Countries): F[List[BulkError]] =
+    for {
+      response <- elasticClient
+        .execute(bulk {
+          for (country <- countries) yield (update(country.code) in indexName).docAsUpsert(country)
+        })
+        .lift
+    } yield bulkFailuresIfAny(response.result.failures)
+
+  // Test-only. Not used by the app.
+  override def upsert(country: Country): F[String] =
     for {
       response <- elasticClient.execute((update(country.code) in indexName).docAsUpsert(country)).lift
     } yield response.result.result
 
-  private def getBulkFailuresIfAny(failures: Seq[BulkResponseItem]): List[BulkError] =
+  private def bulkFailuresIfAny(failures: Seq[BulkResponseItem]): List[BulkError] =
     failures.foldLeft(List[BulkError]())((list, bri) => BulkError(bri.id, bri.error.map(_.reason).getOrElse("Generic Error")) :: list)
 }

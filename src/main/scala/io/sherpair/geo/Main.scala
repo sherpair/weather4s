@@ -19,7 +19,7 @@ object Main extends IOApp {
     new Resources[IO].describe
       .use(_ => IO.never)
       .attempt
-      .map(_.fold(exitWithError(_), _ => ExitCode.Success))
+      .map(_.fold(exitWithError(_), (_: Unit) => ExitCode.Success))
   }
 
   def exitWithError(throwable: Throwable): ExitCode = {

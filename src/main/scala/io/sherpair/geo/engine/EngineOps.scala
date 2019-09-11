@@ -1,19 +1,17 @@
 package io.sherpair.geo.engine
 
-import cats.effect.{Resource, Sync}
+import cats.effect.Sync
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import io.chrisdavenport.log4cats.Logger
 import io.sherpair.geo.cache.Cache
-import io.sherpair.geo.config.Configuration
-import io.sherpair.geo.config.Configuration._
 import io.sherpair.geo.domain.{Countries, Meta}
 
-class EngineOps[F[_]] private (implicit config: Configuration, engine: Engine[F], L: Logger[F], S: Sync[F]) {
+class EngineOps[F[_]: Sync] private (clusterName: String)(implicit engine: Engine[F], L: Logger[F]) {
 
-  val engineOpsCountries = new EngineOpsCountries[F]
-  val engineOpsMeta = new EngineOpsMeta[F]
+  val engineOpsCountries = new EngineOpsCountries[F](engine)
+  val engineOpsMeta = new EngineOpsMeta[F](engine)
 
   def init: F[Cache] =
     for {
@@ -23,9 +21,9 @@ class EngineOps[F[_]] private (implicit config: Configuration, engine: Engine[F]
     } yield cache
 
   def close: F[Unit] =
-    L.info(s"Closing connection with ES cluster(${clusterName(config)})") *> engine.close
+    L.info(s"Closing connection with ES cluster(${clusterName})") *> engine.close
 
-  def loadMeta: F[Meta] = engineOpsMeta.loadMeta
+  def loadMeta: F[Option[Meta]] = engineOpsMeta.loadMeta
 
   def loadCountries: F[Countries] = engineOpsCountries.loadCountries
 
@@ -42,11 +40,11 @@ class EngineOps[F[_]] private (implicit config: Configuration, engine: Engine[F]
       case _ => status
     }
 
-    L.info(s"Status of ES cluster(${clusterName(config)}) is ${color}")
+    L.info(s"Status of ES cluster(${clusterName}) is ${color}")
   }
 }
 
 object EngineOps {
-  def apply[F[_]: Engine: Logger: Sync](implicit C: Configuration): Resource[F, EngineOps[F]] =
-    Resource.liftF(Sync[F].delay(new EngineOps[F]))
+  def apply[F[_]: Engine: Logger: Sync](clusterName: String): F[EngineOps[F]] =
+    Sync[F].delay(new EngineOps[F](clusterName))
 }
