@@ -21,7 +21,9 @@ import org.http4s.EntityDecoder
 import org.http4s.client.Client
 
 class LoaderRun[F[_]: ContextShift](
-    client: Client[F], country: Country)(implicit C: LoaderConfig, eOps: EngineOps[F], L: Logger[F], S: Sync[F]) {
+    blocker: Blocker, client: Client[F], country: Country)(
+    implicit C: LoaderConfig, eOps: EngineOps[F], L: Logger[F], S: Sync[F]
+) {
 
   val countryCodeUpperCase = country.code.toUpperCase
 
@@ -70,20 +72,18 @@ class LoaderRun[F[_]: ContextShift](
   val minFieldsPerLine = 7
 
   private def streamToEngine(is: InputStream): F[Option[LoaderAccums]] =
-    Blocker[F].use {
-      fs2.io.readInputStream(is.pure[F], bufferSize, _, false)
-        .through(text.utf8Decode)
-        .through(text.lines)
-        .filter(_.chars.filter(_ == '\t').count > minFieldsPerLine)
-        .map(line => Locality(line.split("\t")))
-        .chunkN(chunkSize, true)
-        .evalMap(chunk => chunkToEngine(country, chunk.toList))
-        .foldMap[(Int, Int)](accums => (accums._1, accums._2.size)) // count localities and bulk errors
-        .evalMap[F, LoaderAccums] { accums =>
-          S.delay(LoaderAccums(localities = accums._1.toLong, bulkErrors = accums._2))
-        }
-        .compile.last
-    }
+    fs2.io.readInputStream(is.pure[F], bufferSize, blocker, false)
+      .through(text.utf8Decode)
+      .through(text.lines)
+      .filter(_.chars.filter(_ == '\t').count > minFieldsPerLine)
+      .map(line => Locality(line.split("\t")))
+      .chunkN(chunkSize, true)
+      .evalMap(chunk => chunkToEngine(country, chunk.toList))
+      .foldMap[(Int, Int)](accums => (accums._1, accums._2.size)) // count localities and bulk errors
+      .evalMap[F, LoaderAccums] { accums =>
+        S.delay(LoaderAccums(localities = accums._1.toLong, bulkErrors = accums._2))
+      }
+      .compile.last
 
   private def toTempFile(is: InputStream): F[Path] = {
     val tempFile = Files.createTempFile(s"GEO-${countryCodeUpperCase}-", ".tmp.zip")
@@ -99,7 +99,8 @@ class LoaderRun[F[_]: ContextShift](
 object LoaderRun {
 
   def apply[F[_]: ContextShift](
-      client: Client[F], country: Country)(implicit C: LoaderConfig, E: EngineOps[F], L: Logger[F], S: Sync[F]
+    blocker: Blocker, client: Client[F], country: Country)(
+    implicit C: LoaderConfig, E: EngineOps[F], L: Logger[F], S: Sync[F]
   ): F[Unit] =
-    new LoaderRun[F](client, country).start
+    new LoaderRun[F](blocker, client, country).start
 }

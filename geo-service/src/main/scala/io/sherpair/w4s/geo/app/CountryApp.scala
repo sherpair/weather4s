@@ -9,24 +9,16 @@ import io.sherpair.w4s.domain.{Countries, Country, CountryCount, Logger}
 import io.sherpair.w4s.geo.cache.CacheRef
 import io.sherpair.w4s.geo.config.GeoConfig
 import io.sherpair.w4s.geo.http.Loader
-import org.http4s.{EntityEncoder, Headers, HttpRoutes, MediaType, Response}
+import org.http4s.{EntityEncoder, HttpRoutes, Response}
 import org.http4s.circe._
 import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
-import org.http4s.headers.{Accept, `Content-Type`}
 
 class CountryApp[F[_]: ConcurrentEffect](
     cacheRef: CacheRef[F], client: Client[F])(implicit C: GeoConfig, L: Logger[F]) extends Http4sDsl[F] {
 
   implicit val countryEncoder: EntityEncoder[F, Country] = jsonEncoderOf[F, Country]
   implicit val countryCountEncoder = jsonEncoderOf[F, CountryCount]
-
-  val headers: Headers = Headers.of(
-    Accept(MediaType.application.json),
-    `Content-Type`(MediaType.application.json),
-    // Header("Accept", "application/json; charset=utf-8"),
-    // Header("Content-Type", "application/json")
-  )
 
   def routes: HttpRoutes[F] = HttpRoutes.of[F] {
     case GET -> Root / "countries" => Ok(count)
@@ -53,7 +45,7 @@ class CountryApp[F[_]: ConcurrentEffect](
       countriesNotAvailableYet: Countries, maybeCountry: Option[Country]
   ): F[Response[F]] =
     maybeCountry.map(country => countriesNotAvailableYet.find(_.code == country.code) match {
-      case Some(country) => Loader(client, country, headers, countryEncoder.toEntity(country).body)
+      case Some(country) => Loader(client, country, countryEncoder.toEntity(country).body)
       case _ => Conflict("Country already available")
     }).getOrElse(NotFound())
 

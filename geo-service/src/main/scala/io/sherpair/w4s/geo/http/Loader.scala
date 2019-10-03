@@ -6,13 +6,13 @@ import io.circe.syntax._
 import io.sherpair.w4s.config.Http.host
 import io.sherpair.w4s.domain.{Country, Logger}
 import io.sherpair.w4s.geo.config.GeoConfig
-import org.http4s.{EntityBody, Headers, ParseFailure, Request, Response, Uri}
+import org.http4s.{EntityBody, ParseFailure, Request, Response, Uri}
 import org.http4s.Method.PUT
 import org.http4s.Status.InternalServerError
 import org.http4s.circe._
 import org.http4s.client.Client
 
-class Loader[F[_]](client: Client[F], country: Country, headers: Headers, host: String)(
+class Loader[F[_]](client: Client[F], country: Country, host: String)(
     implicit CE: ConcurrentEffect[F], L: Logger[F]
 ) {
 
@@ -34,7 +34,7 @@ class Loader[F[_]](client: Client[F], country: Country, headers: Headers, host: 
 object Loader {
 
   def apply[F[_]: ConcurrentEffect: Logger](
-      client: Client[F], country: Country, headers: Headers, body: EntityBody[F])(implicit config: GeoConfig
+      client: Client[F], country: Country, body: EntityBody[F])(implicit config: GeoConfig
   ): F[Response[F]] =
-    new Loader[F](client, country, headers, host(config.httpLoader)) send
+    new Loader[F](client, country, host(config.httpLoader)) send
 }

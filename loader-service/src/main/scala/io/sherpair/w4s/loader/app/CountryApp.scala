@@ -23,6 +23,6 @@ class CountryApp[F[_]: Sync](queue: NoneTerminatedQueue[F, Country], loaderFiber
       }) *> Ok()
 
     case GET -> Root / "quit" =>
-      queue.enqueue1(None) >> loaderFiber.join >> L.warn("\nCountry Loader stopped!!\n") *> Ok()
+      queue.enqueue1(None) >> loaderFiber.join >> L.warn("Country Loader stopped!!") *> Ok()
   }
 }
