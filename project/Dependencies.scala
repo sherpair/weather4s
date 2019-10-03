@@ -7,13 +7,13 @@ object Dependencies {
     val catsEffect = "2.0.0"
     val circe = "0.12.1"
     val circeDerivation = "0.12.0-M7"
-    val fs2 = "2.0.0"
+    val fs2 = "2.0.1"
     val elastic4s = "7.3.1"
-    val http4s = "0.21.0-M4"
+    val http4s = "0.21.0-M5"
     val log4cats = "1.0.0"
     val logback = "1.2.3"
     val lucene4s = "1.9.1"
-    val pureconfig = "0.12.0"
+    val pureconfig = "0.12.1"
     val scalatest = "3.0.8"
   }
 
@@ -40,6 +40,7 @@ object Dependencies {
   )
 
   lazy val fs2 = Seq(
+    "co.fs2" %% "fs2-core" % version.fs2,
     "co.fs2" %% "fs2-io" % version.fs2
   )
 

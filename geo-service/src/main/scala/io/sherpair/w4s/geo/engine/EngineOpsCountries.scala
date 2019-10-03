@@ -5,8 +5,7 @@ import scala.io.Source.fromResource
 import cats.effect.{Resource, Sync}
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import io.chrisdavenport.log4cats.Logger
-import io.sherpair.w4s.domain.{epochAsLong, BulkError, Countries, Country, Meta}
+import io.sherpair.w4s.domain.{epochAsLong, BulkError, Countries, Country, Logger}
 import io.sherpair.w4s.domain.Country.indexName
 import io.sherpair.w4s.engine.{Engine, EngineIndex}
 import io.sherpair.w4s.engine.EngineIndex.bulkErrorMessage
@@ -24,6 +23,7 @@ private[engine] class EngineOpsCountries[F[_]: Sync](implicit E: Engine[F], L: L
 
   def loadCountries: F[Countries] = engineCountry.loadAll()
 
+  // Must only be used for testing
   def upsert(country: Country): F[String] = engineCountry.upsert(country)
 
   private def decodeAndStoreCountries(json: String): F[Countries] =
@@ -32,6 +32,7 @@ private[engine] class EngineOpsCountries[F[_]: Sync](implicit E: Engine[F], L: L
       _ <- E.createIndex(indexName)
       _ <- logIndexStatus("was created")
       listOfBulkErrors <- engineCountry.saveAll(countries)
+      _ <- E.refreshIndex(indexName)
       _ <- logCountOfStoredCountriesIfNoErrors(countries.size, listOfBulkErrors)
     } yield countries
 
@@ -50,7 +51,7 @@ private[engine] class EngineOpsCountries[F[_]: Sync](implicit E: Engine[F], L: L
   private def logCountOfCountriesLoadedFromEngine(countries: Countries): F[Unit] = {
     val size = countries.size
     require(size >= Country.numberOfCountries, Country.requirement)  // Fatal Error!!
-    val loadedFromUser = countries.count(_.updated != epochAsLong)
+    val loadedFromUser = countries.count(_.updated > epochAsLong)
     L.info(s"Countries(${size}):  uploaded(${loadedFromUser}),  not-uploaded-yet(${size - loadedFromUser})")
   }
 

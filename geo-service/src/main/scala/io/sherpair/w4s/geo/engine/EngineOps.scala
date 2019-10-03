@@ -4,8 +4,7 @@ import cats.effect.Sync
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import io.chrisdavenport.log4cats.Logger
-import io.sherpair.w4s.domain.{Countries, Meta}
+import io.sherpair.w4s.domain.{Countries, Logger, Meta}
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.geo.cache.Cache
 
@@ -24,9 +23,9 @@ class EngineOps[F[_]: Sync] (clusterName: String)(implicit E: Engine[F], L: Logg
   def close: F[Unit] =
     L.info(s"Closing connection with ES cluster(${clusterName})") *> E.close
 
-  def loadMeta: F[Option[Meta]] = engineOpsMeta.loadMeta
-
   def loadCountries: F[Countries] = engineOpsCountries.loadCountries
+
+  def loadMeta: F[Option[Meta]] = engineOpsMeta.loadMeta
 
   private def createIndexesIfNotExist: F[Cache] =
     for {
@@ -47,5 +46,7 @@ class EngineOps[F[_]: Sync] (clusterName: String)(implicit E: Engine[F], L: Logg
 }
 
 object EngineOps {
-  def apply[F[_]: Engine: Logger: Sync](clusterName: String): EngineOps[F] = new EngineOps[F](clusterName)
+
+  def apply[F[_]: Engine: Logger: Sync](clusterName: String): F[EngineOps[F]] =
+    Sync[F].delay(new EngineOps[F](clusterName))
 }

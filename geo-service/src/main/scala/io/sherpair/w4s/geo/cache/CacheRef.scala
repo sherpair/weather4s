@@ -2,12 +2,11 @@ package io.sherpair.w4s.geo.cache
 
 import cats.effect.Sync
 import cats.effect.concurrent.Ref
-import cats.syntax.either._
 import cats.syntax.functor._
-import io.sherpair.w4s.domain.{epochAsLong, unit, Countries, Country, CountryCount}
+import io.sherpair.w4s.domain._
 
 case class Cache(
-  lastCacheRenewal: Long, countries: Countries, cacheHandlerStopFlag: Either[Unit, Unit] = unit.asLeft[Unit]
+  lastCacheRenewal: Long, countries: Countries, cacheHandlerStopFlag: Either[Unit, Unit] = leftUnit
 )
 
 trait CacheRef[F[_]] {
@@ -27,12 +26,12 @@ object CacheRef {
   def apply[F[_]: Sync](cache: Cache): F[CacheRef[F]] =
     Ref.of[F, Cache](cache).map { ref: Ref[F, Cache] =>
       new CacheRef[F] {
-        override def availableCountries: F[Countries] = ref.get.map(_.countries.filter(_.updated != epochAsLong))
+        override def availableCountries: F[Countries] = ref.get.map(_.countries.filter(_.updated > epochAsLong))
         override def cacheHandlerStopFlag: F[Either[Unit, Unit]] = ref.get.map(_.cacheHandlerStopFlag)
         override def cacheRenewal(cache: Cache): F[Unit] = ref.set(cache)
-        override def countriesNotAvailableYet: F[Countries] = ref.get.map(_.countries.filter(_.updated == epochAsLong))
+        override def countriesNotAvailableYet: F[Countries] = ref.get.map(_.countries.filter(_.updated <= epochAsLong))
         override def countryByCode(code: String): F[Option[Country]] = {
-          val codeUC = code.toUpperCase
+          val codeUC = code.toLowerCase
           ref.get.map(_.countries.find(_.code == codeUC))
         }
         override def countryByName(name: String): F[Option[Country]] = {
@@ -41,7 +40,7 @@ object CacheRef {
         }
         override def countryCount: F[CountryCount] = ref.get.map(cache => CountryCount(cache.countries))
         override def lastCacheRenewal: F[Long] = ref.get.map(_.lastCacheRenewal)
-        override def stopCacheHandler: F[Unit] = ref.update(_.copy(cacheHandlerStopFlag = unit.asRight[Unit]))
+        override def stopCacheHandler: F[Unit] = ref.update(_.copy(cacheHandlerStopFlag = rightUnit))
       }
     }
 }

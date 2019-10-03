@@ -17,4 +17,8 @@ trait Engine[F[_]] {
   def healthCheck: F[(Int, String)]
 
   def indexExists(name: String): F[Boolean]
+
+  def localityIndex: LocalityIndex[F]
+
+  def refreshIndex(name: String): F[Boolean]
 }

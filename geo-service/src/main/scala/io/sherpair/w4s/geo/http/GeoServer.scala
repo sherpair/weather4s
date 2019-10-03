@@ -1,6 +1,6 @@
 package io.sherpair.w4s.geo.http
 
-import cats.effect.{Concurrent, ConcurrentEffect, ContextShift, Fiber, Timer}
+import cats.effect.{Concurrent, ConcurrentEffect, ContextShift, Fiber, Resource, Timer}
 import cats.effect.syntax.concurrent._
 import cats.syntax.functor._
 import io.sherpair.w4s.config.Host
@@ -12,14 +12,16 @@ import org.http4s.syntax.kleisli._
 
 object GeoServer {
 
-  def describe[F[_]: ConcurrentEffect: ContextShift: Timer](host: Host, routes: Seq[HttpRoutes[F]]): F[Fiber[F, Unit]] =
-    (for {
-      server <- BlazeServerBuilder[F]
+  def apply[F[_]: ConcurrentEffect: ContextShift: Timer](host: Host, routes: Seq[HttpRoutes[F]]): Resource[F, Fiber[F, Unit]] =
+    Resource.liftF(
+      BlazeServerBuilder[F]
         .bindHttp(host.port, host.address)
+        // .enableHttp2(true)  // HTTP/2 support requires TLS
         .withHttpApp(withMiddleware[F](routes))
         .serve.compile.drain
-    } yield server).start
+        .map(identity).start
+    )
 
   private def withMiddleware[F[_]: Concurrent](routes: Seq[HttpRoutes[F]]): HttpApp[F] =
-    Logger.httpApp(true, true)(CORS(Router(routes.map(("/", _)): _*)).orNotFound)
+    Logger.httpApp(true, true)(CORS(Router(routes.map(("/geo", _)): _*)).orNotFound)
 }

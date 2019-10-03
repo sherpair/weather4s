@@ -1,30 +1,40 @@
 package io.sherpair.w4s.geo.http
 
-import scala.concurrent.ExecutionContext.global
-
 import cats.effect.ConcurrentEffect
 import cats.syntax.apply._
-import io.chrisdavenport.log4cats.Logger
+import io.circe.syntax._
 import io.sherpair.w4s.config.Http.host
-import io.sherpair.w4s.domain.Country
-import io.sherpair.w4s.geo.config.Configuration
-import org.http4s.{HttpVersion, ParseFailure, Request, Response, Uri}
+import io.sherpair.w4s.domain.{Country, Logger}
+import io.sherpair.w4s.geo.config.GeoConfig
+import org.http4s.{EntityBody, Headers, ParseFailure, Request, Response, Uri}
 import org.http4s.Method.PUT
 import org.http4s.Status.InternalServerError
-import org.http4s.client.blaze.BlazeClientBuilder
+import org.http4s.circe._
+import org.http4s.client.Client
 
-object Loader {
+class Loader[F[_]](client: Client[F], country: Country, headers: Headers, host: String)(
+    implicit CE: ConcurrentEffect[F], L: Logger[F]
+) {
 
-  def apply[F[_] : Logger](country: Country)(implicit C: Configuration, CE: ConcurrentEffect[F]): F[Response[F]] = {
-    val uri = s"http://${host(C.httpLoader)}/country/${country.code}"
+  private val send: F[Response[F]] = {
+    val uri = s"http://${host}/loader/country/${country.code}"
     Uri.fromString(uri).fold(logUriError(_), sendRequest(_))
   }
 
-  private def sendRequest[F[_]](uri: Uri)(implicit CE: ConcurrentEffect[F]): F[Response[F]] =
-    BlazeClientBuilder[F](global).resource.use {
-      _.fetch(Request[F](PUT, uri, HttpVersion.`HTTP/2.0`))(CE.delay(_))
-    }
+  private def sendRequest(uri: Uri): F[Response[F]] =
+    L.info(s"""Sending request "Loading ${country}" to ${host}""") *>
+      // Idempotent PUT.
+      client.fetch(Request[F](PUT, uri).withEntity(country.asJson))(CE.delay(_))
 
-  private def logUriError[F[_] : Logger](failure: ParseFailure)(implicit CE: ConcurrentEffect[F]): F[Response[F]] =
-    Logger[F].error(failure)("Geo.Loader: Bug or Missing Configuration?") *> CE.delay(Response[F](InternalServerError))
+  private def logUriError(failure: ParseFailure): F[Response[F]] =
+    L.error(failure)("Geo.Loader: Bug or Missing Configuration?") *>
+      CE.delay(Response[F](InternalServerError))
+}
+
+object Loader {
+
+  def apply[F[_]: ConcurrentEffect: Logger](
+      client: Client[F], country: Country, headers: Headers, body: EntityBody[F])(implicit config: GeoConfig
+  ): F[Response[F]] =
+    new Loader[F](client, country, headers, host(config.httpLoader)) send
 }

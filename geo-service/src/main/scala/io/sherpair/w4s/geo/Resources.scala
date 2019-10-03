@@ -1,25 +1,29 @@
 package io.sherpair.w4s.geo
 
+import scala.concurrent.ExecutionContext.global
+
 import cats.effect.{ConcurrentEffect, ContextShift, Fiber, Resource, Timer}
-import cats.effect.syntax.concurrent._
-import io.chrisdavenport.log4cats.Logger
-import io.sherpair.w4s.config.Engine.clusterName
+import io.sherpair.w4s.domain.Logger
 import io.sherpair.w4s.engine.Engine
-import io.sherpair.w4s.geo.app.Application
+import io.sherpair.w4s.geo.app.Routes
 import io.sherpair.w4s.geo.cache.{Cache, CacheHandler, CacheRef}
-import io.sherpair.w4s.geo.config.Configuration
+import io.sherpair.w4s.geo.config.GeoConfig
 import io.sherpair.w4s.geo.engine.EngineOps
 import io.sherpair.w4s.geo.http.GeoServer
+import org.http4s.client.blaze.BlazeClientBuilder
 
-class Resources[F[_]: ContextShift: Engine: Logger: Timer](implicit CE: ConcurrentEffect[F]) {
+object Resources {
 
-  def describe(implicit C: Configuration): Resource[F, (Cache, Fiber[F, Unit], Fiber[F, Unit])] =
+  def apply[F[_]: ContextShift: Engine: Logger: Timer](
+      implicit C: GeoConfig, CE: ConcurrentEffect[F]): Resource[F, (Cache, Fiber[F, Unit], Fiber[F, Unit])] =
     for {
-      implicit0(engineOps: EngineOps[F]) <- Resource.liftF(CE.delay(EngineOps[F](clusterName(C.engine))))
+      implicit0(engineOps: EngineOps[F]) <- Resource.liftF(EngineOps[F](C.clusterName))
       countriesCache <- Resource.make(engineOps.init)(_ => engineOps.close)
       cacheRef <- Resource.make(CacheRef[F](countriesCache))(_.stopCacheHandler)
-      cacheHandlerFiber <- Resource.liftF(CacheHandler.describe[F](cacheRef, engineOps, C.cacheHandlerInterval).start)
-      routes <- Resource.liftF(new Application[F](cacheRef).routes)
-      httpServerFiber <- Resource.liftF(GeoServer.describe[F](C.httpGeo.host, routes))
-    } yield (countriesCache, cacheHandlerFiber, httpServerFiber)
+      cacheHandlerFiber <- Resource.liftF(CacheHandler[F](cacheRef, engineOps, C.cacheHandlerInterval))
+      client <- BlazeClientBuilder[F](global).resource
+      routes <- Routes[F](cacheRef, client)
+      httpServerFiber <- GeoServer[F](C.httpGeo.host, routes)
+    }
+    yield (countriesCache, cacheHandlerFiber, httpServerFiber)
 }

@@ -2,12 +2,12 @@ package io.sherpair.w4s.geo.cache
 
 import scala.concurrent.duration.FiniteDuration
 
-import cats.effect.{Sync, Timer}
+import cats.effect.{Concurrent, Fiber, Sync, Timer}
+import cats.syntax.applicative._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import io.chrisdavenport.log4cats.Logger
-import io.sherpair.w4s.domain.{epochAsLong, unit, Countries, Country, Meta}
+import io.sherpair.w4s.domain.{epochAsLong, unit, Countries, Country, Logger, Meta}
 import io.sherpair.w4s.geo.engine.EngineOps
 
 class CacheHandler[F[_]: Sync: Timer] private (
@@ -17,11 +17,7 @@ class CacheHandler[F[_]: Sync: Timer] private (
   def start: F[Unit] =
     L.info("Starting CacheHandler") *>
       Sync[F].tailRecM[Unit, Unit](unit) { _ =>
-        for {
-          _ <- Timer[F].sleep(cacheHandlerInterval)
-          _ <- checkIfCacheRenewalIsNeeded
-          cacheHandlerStopFlag <- cacheRef.cacheHandlerStopFlag
-        } yield cacheHandlerStopFlag
+        Timer[F].sleep(cacheHandlerInterval) >> checkIfCacheRenewalIsNeeded >> cacheRef.cacheHandlerStopFlag
       }
 
   private def checkIfCacheRenewalIsNeeded: F[Unit] =
@@ -33,8 +29,8 @@ class CacheHandler[F[_]: Sync: Timer] private (
 
   private def checkIfCacheRenewalIsNeeded(maybeMeta: Option[Meta], lastCacheRenewal: Long): F[Unit] =
     maybeMeta.fold(L.error("Meta record not found!! Cannot do a cache renewal")) { meta =>
-      if (meta.lastEngineUpdate <= lastCacheRenewal) Sync[F].unit
-      else cacheRenewal(meta)
+      // Sync[F].whenA(meta.lastEngineUpdate > lastCacheRenewal)(cacheRenewal(meta))
+      cacheRenewal(meta).whenA(meta.lastEngineUpdate > lastCacheRenewal)
     }
 
   private def cacheRenewal(meta: Meta): F[Unit] =
@@ -49,15 +45,14 @@ class CacheHandler[F[_]: Sync: Timer] private (
   private def logCountOfCountries(countries: Countries): F[Unit] = {
     val size = countries.size
     if (size < Country.numberOfCountries) L.error(Country.requirement)
-    val loadedFromUser = countries.count(_.updated != epochAsLong)
+    val loadedFromUser = countries.count(_.updated > epochAsLong)
     L.info(s"Countries(${size}):  uploaded(${loadedFromUser}),  not-uploaded-yet(${size - loadedFromUser})")
   }
 }
 
 object CacheHandler {
 
-  def describe[F[_]: Logger: Sync: Timer](
-    cacheRef: CacheRef[F], engineOps: EngineOps[F], cacheHandlerInterval: FiniteDuration
-  ): F[Unit] =
-    new CacheHandler[F](cacheRef, engineOps, cacheHandlerInterval).start
+  def apply[F[_]: Logger: Timer](cacheRef: CacheRef[F], engineOps: EngineOps[F], cacheHandlerInterval: FiniteDuration)(
+      implicit C: Concurrent[F]): F[Fiber[F, Unit]] =
+    C.start(new CacheHandler[F](cacheRef, engineOps, cacheHandlerInterval).start)
 }

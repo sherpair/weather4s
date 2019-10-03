@@ -6,13 +6,13 @@ import io.circe.{Decoder, Encoder, HCursor}
 import io.circe.derivation.{deriveDecoder, deriveEncoder}
 import io.circe.jawn.decode
 
-case class Country(code: String, name: String, updated: Long = epochAsLong)
+case class Country(code: String, name: String, localities: Long = 0L, updated: Long = epochAsLong)
 
 case class CountryCount(total: Int, available: Int, notAvailableYet: Int)
 
 object CountryCount {
   def apply(countries: Countries): CountryCount = {
-    val loadFromUser = countries.count(_.updated != epochAsLong)
+    val loadFromUser = countries.count(_.updated > epochAsLong)
     CountryCount(countries.size, loadFromUser, countries.size - loadFromUser)
   }
 
@@ -21,9 +21,12 @@ object CountryCount {
 }
 
 object Country {
-  def apply(code: String, name: String): Country = new Country(code, name, epochAsLong)
+  // The engine requires lowercase index names, and w4s uses the country code as index name
+  def apply(code: String, name: String): Country = new Country(code.toLowerCase, name, 0, epochAsLong)
 
   val indexName = "countries"
+
+  val countryUnderLoadOrUpdate = epochAsLong - 1L
 
   val numberOfCountries = 245
   val requirement = s"Something wrong happened!! Countries should be at least ${numberOfCountries}"
@@ -37,7 +40,7 @@ object Country {
         for {
           code <- hCursor.get[String]("code")
           name <- hCursor.get[String]("name")
-        } yield Country(code, name, epochAsLong)
+        } yield Country(code.toLowerCase, name, 0L, epochAsLong)
 
     decode[Countries](json) match {
       case Left(error) => Sync[F].raiseError(error)

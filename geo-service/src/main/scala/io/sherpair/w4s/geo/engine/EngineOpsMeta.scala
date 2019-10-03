@@ -3,8 +3,7 @@ package io.sherpair.w4s.geo.engine
 import cats.effect.Sync
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import io.chrisdavenport.log4cats.Logger
-import io.sherpair.w4s.domain.{epochAsLong, toIsoDate, Meta}
+import io.sherpair.w4s.domain.{epochAsLong, toIsoDate, Logger, Meta}
 import io.sherpair.w4s.domain.Meta.{id, indexName}
 import io.sherpair.w4s.engine.{Engine, EngineIndex}
 
@@ -40,6 +39,7 @@ private[engine] class EngineOpsMeta[F[_]: Sync](implicit E: Engine[F], L: Logger
       _ <- logIndexStatus("was created")
       meta = Meta(epochAsLong)
       _ <- engineMeta.upsert(meta)
+      _ <- E.refreshIndex(indexName)
     } yield meta
 
   private def logIndexStatus(status: String): F[Unit] =

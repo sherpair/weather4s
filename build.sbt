@@ -5,9 +5,9 @@ name := "weather4s"
 lazy val global = (project in file("."))
   .enablePlugins(GitBranchPrompt)
   .settings(commonSettings: _*)
-  .aggregate(authService, geoService, loaderService)
+  .aggregate(auth, geo, loader)
 
-lazy val authService = (project in file("auth-service"))
+lazy val auth = (project in file("auth-service"))
   .configs(IntegrationTest)
   // .enablePlugins(DockerPlugin, GraalVMNativeImagePlugin)
   .settings(commonSettings: _*)
@@ -15,6 +15,7 @@ lazy val authService = (project in file("auth-service"))
   .settings(
     name := "auth-service",
     Defaults.itSettings,
+    headerSettings(IntegrationTest),
     inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest)),
     parallelExecution in IntegrationTest := false,
     libraryDependencies ++= fs2 ++ http4s
@@ -23,10 +24,10 @@ lazy val authService = (project in file("auth-service"))
 lazy val domain = project
   .settings(commonSettings: _*)
   .settings(
-    libraryDependencies ++= elastic ++ lucene
+    libraryDependencies ++= elastic ++ http4s ++ lucene
   )
 
-lazy val geoService = (project in file("geo-service"))
+lazy val geo = (project in file("geo-service"))
   .configs(IntegrationTest)
   .dependsOn(domain % "compile -> compile; test -> test")
   // .enablePlugins(GraalVMNativeImagePlugin)
@@ -37,28 +38,34 @@ lazy val geoService = (project in file("geo-service"))
     name := "geo-service",
     mainClass in Compile := Some("io.sherpair.w4s.geo.Main"),
     Defaults.itSettings,
+    headerSettings(IntegrationTest),
     inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest)),
     parallelExecution in IntegrationTest := false,
     libraryDependencies ++= fs2 ++ http4s ++ http4sClient
   )
 
-lazy val loaderService = (project in file("loader-service"))
+lazy val loader = (project in file("loader-service"))
   .configs(IntegrationTest)
   .dependsOn(domain % "compile -> compile; test -> test")
-  // .enablePlugins(DockerPlugin, GraalVMNativeImagePlugin)
+  // .enablePlugins(GraalVMNativeImagePlugin)
+  .enablePlugins(AshScriptPlugin, DockerPlugin, JavaAppPackaging)  // Alpine -> Ash Shell
   .settings(commonSettings: _*)
   .settings(dockerSettings: _*)
   .settings(
     name := "loader-service",
+    mainClass in Compile := Some("io.sherpair.w4s.loader.Main"),
     Defaults.itSettings,
+    headerSettings(IntegrationTest),
     inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest)),
     parallelExecution in IntegrationTest := false,
-    libraryDependencies ++= fs2 ++ http4s
+    libraryDependencies ++= fs2 ++ http4s ++ http4sClient
   )
 
 lazy val commonSettings = Seq(
   organization := "io.sherpair",
-  licenses := Seq("Apache 2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+  organizationName := "Lucio Biondi",
+  startYear := Some(2019),
+  licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
   scalaVersion := "2.13.1",
   scalacOptions ++= scalacFlags,
   // coverageEnabled := true,
@@ -80,14 +87,13 @@ lazy val dockerSettings = Seq(
 
 lazy val scalacFlags = Seq(
   // "-Ypartial-unification"   // remove for 2.13
-  "-deprecation", // warn about use of deprecated APIs
-  "-encoding",
-  "UTF-8", // source files are in UTF-8
-  "-feature", // warn about misused language features
+  "-deprecation",              // warn about use of deprecated APIs
+  "-encoding", "UTF-8",        // source files are in UTF-8
+  "-feature",                  // warn about misused language features
   "-language:existentials",
   "-language:higherKinds",
   "-language:postfixOps",
-  "-unchecked", // warn about unchecked type parameters
+  "-unchecked",                // warn about unchecked type parameters
   "-Ywarn-dead-code",
   "-Ywarn-numeric-widen",
   "-Ywarn-value-discard",

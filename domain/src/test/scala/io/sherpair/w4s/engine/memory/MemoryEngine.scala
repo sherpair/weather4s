@@ -8,8 +8,8 @@ import cats.syntax.applicative._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import io.circe.{Decoder, Encoder}
-import io.sherpair.w4s.domain.{unit, BulkError}
-import io.sherpair.w4s.engine.{Engine, EngineIndex}
+import io.sherpair.w4s.domain.BulkError
+import io.sherpair.w4s.engine.{Engine, EngineIndex, LocalityIndex}
 
 trait Indexes[F[_]] {
   def createIndex(name: String): F[Unit]
@@ -34,6 +34,10 @@ class MemoryEngine[F[_]: Sync] extends Engine[F] {
   override def execUnderGlobalLock[T](f: => F[T]): F[T] = f
   override def healthCheck: F[(Int, String)] = Sync[F].delay((1, "green"))
   override def indexExists(name: String): F[Boolean] = indexes.flatMap(_.indexExists(name))
+
+  override def localityIndex: LocalityIndex[F] = MemoryLocalityIndex[F]
+
+  override def refreshIndex(name: String): F[Boolean] = true.pure[F]
 }
 
 object MemoryEngine {

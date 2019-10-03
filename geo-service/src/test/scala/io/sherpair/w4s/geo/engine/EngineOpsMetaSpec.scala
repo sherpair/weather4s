@@ -10,6 +10,7 @@ class EngineOpsMetaSpec extends BaseSpec {
     "the \"meta\" index does not exist yet in the engine" should {
       "successfully initialise the Meta object" in new ImplicitsSyncIO {
         val metas = for {
+          engineOps <- engineOpsF
           metaFromInitialise <- engineOps.engineOpsMeta.createIndexIfNotExists
           // Also checking the Meta object is successfully saved in the engine
           metaFromEngine <- engineOps.engineOpsMeta.loadMeta
@@ -25,6 +26,7 @@ class EngineOpsMetaSpec extends BaseSpec {
     "the \"meta\" index does already exist in the engine" should {
       "successfully load the Meta object from the engine" in new ImplicitsSyncIO {
         val metas = for {
+          engineOps <- engineOpsF
           metaFromInitialise <- engineOps.engineOpsMeta.initialiseMeta
           metaFromEngine <- engineOps.engineOpsMeta.firstMetaLoad
         }
@@ -42,6 +44,7 @@ class EngineOpsMetaSpec extends BaseSpec {
           (for {
             _ <- engine.createIndex(indexName)
             _ <- engine.indexExists(indexName)
+            engineOps <- engineOpsF
             _ <- engineOps.engineOpsMeta.createIndexIfNotExists
           } yield unit).unsafeRunSync
         }

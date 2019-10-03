@@ -1,7 +1,7 @@
 package io.sherpair.w4s.domain
 
-import io.sherpair.w4s.config.Service
+import io.sherpair.w4s.config.Configuration
 
 case class W4sError(msg: String, cause: Option[Throwable] = None)(
-  implicit service: Service
-) extends RuntimeException(s"${service.name}: ${msg}", cause.orNull)
+  implicit C: Configuration
+) extends RuntimeException(s"${C.service.name}: ${msg}", cause.orNull)
