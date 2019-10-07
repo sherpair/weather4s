@@ -1,7 +1,9 @@
 package io.sherpair.w4s.loader.config
 
-import io.sherpair.w4s.config.{Configuration, Engine, Http, Service}
+import io.sherpair.w4s.config.{Configuration, Engine, Http, Service, Suggestions}
 import pureconfig.ConfigSource
+// Needed.
+import pureconfig.module.enumeratum._
 // Needed.
 import pureconfig.generic.auto._
 
@@ -10,7 +12,8 @@ case class LoaderConfig(
   engine: Engine,
   httpLoader: Http,
   maxEnqueuedCountries: Int,
-  service: Service
+  service: Service,
+  suggestions: Suggestions
 ) extends Configuration
 
 object LoaderConfig {

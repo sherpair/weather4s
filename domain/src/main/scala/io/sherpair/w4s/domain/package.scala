@@ -12,6 +12,7 @@ package object domain {
 
   type Countries = List[Country]
   type Localities = List[Locality]
+  type Suggestions = List[Suggestion]
 
   type Logger[F[_]] = SelfAwareStructuredLogger[F]
 

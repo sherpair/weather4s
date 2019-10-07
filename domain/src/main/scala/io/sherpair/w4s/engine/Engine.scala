@@ -3,6 +3,7 @@ package io.sherpair.w4s.engine
 import scala.reflect.ClassTag
 
 import io.circe.{Decoder, Encoder}
+import io.sherpair.w4s.domain.Analyzer
 
 trait Engine[F[_]] {
 
@@ -10,7 +11,7 @@ trait Engine[F[_]] {
 
   def createIndex(name: String, jsonMapping: Option[String] = None): F[Unit]
 
-  def engineIndex[T: ClassTag: Decoder: Encoder](indexName: String, f: T => String): EngineIndex[F, T]
+  def engineIndex[T: ClassTag: Decoder: Encoder](indexName: String, f: T => String): F[EngineIndex[F, T]]
 
   def execUnderGlobalLock[T](f: => F[T]): F[T]
 
@@ -18,7 +19,7 @@ trait Engine[F[_]] {
 
   def indexExists(name: String): F[Boolean]
 
-  def localityIndex: LocalityIndex[F]
+  def localityIndex: F[LocalityIndex[F]]
 
   def refreshIndex(name: String): F[Boolean]
 }

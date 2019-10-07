@@ -5,33 +5,35 @@ import scala.io.Source.fromResource
 import cats.effect.{Resource, Sync}
 import cats.syntax.flatMap._
 import cats.syntax.functor._
+import io.sherpair.w4s.config.Configuration
 import io.sherpair.w4s.domain.{epochAsLong, BulkError, Countries, Country, Logger}
 import io.sherpair.w4s.domain.Country.indexName
 import io.sherpair.w4s.engine.{Engine, EngineIndex}
 import io.sherpair.w4s.engine.EngineIndex.bulkErrorMessage
 
-private[engine] class EngineOpsCountries[F[_]: Sync](implicit E: Engine[F], L: Logger[F]) {
+private[engine] class EngineOpsCountries[F[_]: Sync](implicit C: Configuration, E: Engine[F], L: Logger[F]) {
 
-  private[engine] val engineCountry: EngineIndex[F, Country] = E.engineIndex[Country](indexName, _.code)
+  private[engine] val engineCountry: F[EngineIndex[F, Country]] = E.engineIndex[Country](indexName, _.code)
 
   private val jsonFile: String = "countries.json"
 
-  def count: F[Long] = engineCountry.count
+  def count: F[Long] = engineCountry.flatMap(_.count)
 
   def createIndexIfNotExists: F[Countries] =
     E.indexExists(indexName).ifM(firstLoadOfCountriesFromEngine, firstLoadOfCountriesFromResource)
 
-  def loadCountries: F[Countries] = engineCountry.loadAll()
+  def loadCountries: F[Countries] = engineCountry.flatMap(_.loadAll())
 
   // Must only be used for testing
-  def upsert(country: Country): F[String] = engineCountry.upsert(country)
+  def upsert(country: Country): F[String] = engineCountry.flatMap(_.upsert(country))
 
   private def decodeAndStoreCountries(json: String): F[Countries] =
     for {
       countries <- Country.decodeFromJson[F](json)
       _ <- E.createIndex(indexName)
       _ <- logIndexStatus("was created")
-      listOfBulkErrors <- engineCountry.saveAll(countries)
+      eC <- engineCountry
+      listOfBulkErrors <- eC.saveAll(countries)
       _ <- E.refreshIndex(indexName)
       _ <- logCountOfStoredCountriesIfNoErrors(countries.size, listOfBulkErrors)
     } yield countries
@@ -65,5 +67,6 @@ private[engine] class EngineOpsCountries[F[_]: Sync](implicit E: Engine[F], L: L
 }
 
 object EngineOpsCountries {
-  def apply[F[_]: Logger: Sync](implicit E: Engine[F]): EngineOpsCountries[F] = new EngineOpsCountries[F]()
+  def apply[F[_]: Logger: Sync](implicit C: Configuration, E: Engine[F]): EngineOpsCountries[F] =
+    new EngineOpsCountries[F]()
 }

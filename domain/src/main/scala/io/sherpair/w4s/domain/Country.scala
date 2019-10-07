@@ -5,24 +5,21 @@ import cats.syntax.applicative._
 import io.circe.{Decoder, Encoder, HCursor}
 import io.circe.derivation.{deriveDecoder, deriveEncoder}
 import io.circe.jawn.decode
+import io.sherpair.w4s.config.Configuration
+import io.sherpair.w4s.domain.Analyzer.stop
 
-case class Country(code: String, name: String, localities: Long = 0L, updated: Long = epochAsLong)
-
-case class CountryCount(total: Int, available: Int, notAvailableYet: Int)
-
-object CountryCount {
-  def apply(countries: Countries): CountryCount = {
-    val loadFromUser = countries.count(_.updated > epochAsLong)
-    CountryCount(countries.size, loadFromUser, countries.size - loadFromUser)
-  }
-
-  implicit val decoder: Decoder[CountryCount] = deriveDecoder[CountryCount]
-  implicit val encoder: Encoder[CountryCount] = deriveEncoder[CountryCount]
-}
+case class Country(
+  code: String,
+  name: String,
+  analyzer: Analyzer,
+  localities: Long,
+  updated: Long
+)
 
 object Country {
   // The engine requires lowercase index names, and w4s uses the country code as index name
-  def apply(code: String, name: String): Country = new Country(code.toLowerCase, name, 0, epochAsLong)
+  def apply(code: String, name: String, analyzer: Analyzer = stop): Country =
+    new Country(code.toLowerCase, name, analyzer, 0, epochAsLong)
 
   val indexName = "countries"
 
@@ -34,13 +31,22 @@ object Country {
   implicit val decoder: Decoder[Country] = deriveDecoder[Country]
   implicit val encoder: Encoder[Country] = deriveEncoder[Country]
 
-  def decodeFromJson[F[_]: Sync](json: String): F[Countries] = {
+  def decodeFromJson[F[_]: Sync](json: String)(implicit C: Configuration): F[Countries] = {
+    def resolveAnalyzer(country: String, name: String): Analyzer =
+      Analyzer.withNameOption(name.trim.toLowerCase) match {
+        case Some(analyzer) => analyzer
+        case _ => throw W4sError(s"The analyzer(${name}) for Country(${country}) is unknown!!")  // Fatal error!!
+      }
+
     implicit val decoder: Decoder[Country] =
       (hCursor: HCursor) =>
         for {
           code <- hCursor.get[String]("code")
           name <- hCursor.get[String]("name")
-        } yield Country(code.toLowerCase, name, 0L, epochAsLong)
+          analyzer <- hCursor.getOrElse[String]("analyzer")(C.defaultAnalyzer.entryName)
+        }
+        // Fatal error (with NoSuchElementException) if the Analyzer is unknown.
+        yield Country(code.toLowerCase, name, resolveAnalyzer(name, analyzer))
 
     decode[Countries](json) match {
       case Left(error) => Sync[F].raiseError(error)

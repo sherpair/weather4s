@@ -7,6 +7,8 @@ object Dependencies {
     val catsEffect = "2.0.0"
     val circe = "0.12.1"
     val circeDerivation = "0.12.0-M7"
+    val enumeratum = "1.5.13"
+    val enumeratumCirce = "1.5.22"
     val fs2 = "2.0.1"
     val elastic4s = "7.3.1"
     val http4s = "0.21.0-M5"
@@ -25,9 +27,11 @@ object Dependencies {
     "io.circe" %% "circe-core" % version.circe,
     "io.circe" %% "circe-derivation" % version.circeDerivation,
     "io.circe" %% "circe-jawn" % version.circe,
+    "io.circe" %% "circe-parser" % version.circe,
     "io.chrisdavenport" %% "log4cats-slf4j" % version.log4cats,
     "ch.qos.logback" % "logback-classic" % version.logback,
     "com.github.pureconfig" %% "pureconfig" % version.pureconfig,
+    "com.github.pureconfig" %% "pureconfig-enumeratum" % version.pureconfig,
     "io.chrisdavenport" %% "log4cats-noop" % version.log4cats % "test",
     "org.scalatest" %% "scalatest" % version.scalatest % "test"
   )
@@ -37,6 +41,11 @@ object Dependencies {
     "com.sksamuel.elastic4s" %% "elastic4s-client-esjava" % version.elastic4s, // the default http client
     "com.sksamuel.elastic4s" %% "elastic4s-effect-cats" % version.elastic4s // for IO (cats) as an alternative executor to Future
     // "com.sksamuel.elastic4s" %% "elastic4s-testkit" % version.elastic4s % "test"
+  )
+
+  lazy val enumeratum = Seq(
+    "com.beachape" %% "enumeratum" % version.enumeratum,
+    "com.beachape" %% "enumeratum-circe" % version.enumeratumCirce
   )
 
   lazy val fs2 = Seq(

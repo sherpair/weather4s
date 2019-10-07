@@ -3,6 +3,7 @@ package io.sherpair.w4s.loader.app
 import cats.effect.{Fiber, Sync}
 import cats.syntax.apply._
 import cats.syntax.flatMap._
+import cats.syntax.option._
 import fs2.concurrent.NoneTerminatedQueue
 import io.sherpair.w4s.domain.{Country, Logger}
 import io.sherpair.w4s.loader.config.LoaderConfig
@@ -19,7 +20,7 @@ class CountryApp[F[_]: Sync](queue: NoneTerminatedQueue[F, Country], loaderFiber
   def routes: HttpRoutes[F] = HttpRoutes.of[F] {
     case request@PUT -> Root / "country" / id =>
       (request.as[Country] >>= { country =>
-        queue.enqueue1(Some(country.copy(code = country.code.toLowerCase)))
+        queue.enqueue1(country.copy(code = country.code.toLowerCase).some)
       }) *> Ok()
 
     case GET -> Root / "quit" =>

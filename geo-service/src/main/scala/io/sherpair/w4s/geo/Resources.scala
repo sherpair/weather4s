@@ -22,7 +22,7 @@ object Resources {
       cacheRef <- Resource.make(CacheRef[F](countriesCache))(_.stopCacheHandler)
       cacheHandlerFiber <- Resource.liftF(CacheHandler[F](cacheRef, engineOps, C.cacheHandlerInterval))
       client <- BlazeClientBuilder[F](global).resource
-      routes <- Routes[F](cacheRef, client)
+      routes <- Routes[F](cacheRef, client, engineOps)
       httpServerFiber <- GeoServer[F](C.httpGeo.host, routes)
     }
     yield (countriesCache, cacheHandlerFiber, httpServerFiber)

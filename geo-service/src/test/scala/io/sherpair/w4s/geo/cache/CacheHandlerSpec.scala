@@ -5,6 +5,7 @@ import java.time.Instant
 import scala.concurrent.duration._
 
 import cats.effect.IO
+import cats.syntax.option._
 import io.sherpair.w4s.domain.Meta
 import io.sherpair.w4s.geo.{BaseSpec, ImplicitsIO}
 
@@ -41,7 +42,7 @@ class CacheHandlerSpec extends BaseSpec {
           }
           yield maybeCountry
 
-        maybeCountry.unsafeRunSync shouldBe Some(expectedCountry)
+        maybeCountry.unsafeRunSync shouldBe expectedCountry.some
       }
     }
   }

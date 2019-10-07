@@ -29,9 +29,9 @@ class CountryAppSpec extends BaseSpec {
     } yield response
   }
 
-  "GET -> /countries" should {
+  "GET -> /geo/countries" should {
     "return the number of total, available and not-available-yet countries" in new ImplicitsIO {
-      val responseIO = withCountryAppRoutes(withBaseResources, Request[IO](GET, uri"/countries"))
+      val responseIO = withCountryAppRoutes(withBaseResources, Request[IO](GET, uri"/geo/countries"))
 
       implicit val countryCountDecoder: EntityDecoder[IO, CountryCount] = jsonOf[IO, CountryCount]
 
@@ -47,13 +47,13 @@ class CountryAppSpec extends BaseSpec {
     }
   }
 
-  "GET -> /country / {id}" should {
+  "GET -> /geo/country / {id}" should {
     "return the requested country" in new ImplicitsIO {
       val expectedCode = countryUnderTest.code
       val expectedName = countryUnderTest.name
 
       val responseIO = withCountryAppRoutes(
-        withBaseResources, Request[IO](GET, unsafeFromString(s"/country/${expectedCode}"))
+        withBaseResources, Request[IO](GET, unsafeFromString(s"/geo/country/${expectedCode}"))
       )
 
       implicit val countryDecoder: EntityDecoder[IO, Country] = jsonOf[IO, Country]
@@ -68,9 +68,9 @@ class CountryAppSpec extends BaseSpec {
     }
   }
 
-  "GET -> /country / {id}" should {
+  "GET -> /geo/country / {id}" should {
     "return \"NotFound\" if the request concerns an unknown country" in new ImplicitsIO {
-      val responseIO = withCountryAppRoutes(withBaseResources, Request[IO](GET, uri"/country/unknown"))
+      val responseIO = withCountryAppRoutes(withBaseResources, Request[IO](GET, uri"/geo/country/unknown"))
 
       val response = responseIO.unsafeRunSync
       response.status shouldBe Status.NotFound

@@ -2,13 +2,12 @@ package io.sherpair.w4s.engine.memory
 
 import scala.reflect.ClassTag
 
-import cats.effect.Sync
+import cats.effect.Concurrent
 import cats.effect.concurrent.Ref
 import cats.syntax.applicative._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import io.circe.{Decoder, Encoder}
-import io.sherpair.w4s.domain.BulkError
 import io.sherpair.w4s.engine.{Engine, EngineIndex, LocalityIndex}
 
 trait Indexes[F[_]] {
@@ -16,7 +15,7 @@ trait Indexes[F[_]] {
   def indexExists(name: String): F[Boolean]
 }
 
-class MemoryEngine[F[_]: Sync] extends Engine[F] {
+class MemoryEngine[F[_]: Concurrent] extends Engine[F] {
 
   private val indexes: F[Indexes[F]] = Ref.of[F, Set[String]](Set.empty[String]).map(ref =>
     new Indexes[F] {
@@ -25,27 +24,27 @@ class MemoryEngine[F[_]: Sync] extends Engine[F] {
     }
   )
 
-  override def close: F[Unit] = Sync[F].unit
+  override def close: F[Unit] = Concurrent[F].unit
   override def createIndex(name: String, jsonMapping: Option[String]): F[Unit] = indexes.map(_.createIndex(name)).void
 
-  override def engineIndex[T: ClassTag: Decoder: Encoder](indexName: String, f: T => String): EngineIndex[F, T] =
+  override def engineIndex[T: ClassTag: Decoder: Encoder](indexName: String, f: T => String): F[EngineIndex[F, T]] =
     MemoryEngineIndex[F, T](indexName, f)
 
   override def execUnderGlobalLock[T](f: => F[T]): F[T] = f
-  override def healthCheck: F[(Int, String)] = Sync[F].delay((1, "green"))
+  override def healthCheck: F[(Int, String)] = Concurrent[F].delay((1, "green"))
   override def indexExists(name: String): F[Boolean] = indexes.flatMap(_.indexExists(name))
 
-  override def localityIndex: LocalityIndex[F] = MemoryLocalityIndex[F]
+  override def localityIndex: F[LocalityIndex[F]] = MemoryLocalityIndex[F]
 
   override def refreshIndex(name: String): F[Boolean] = true.pure[F]
 }
 
 object MemoryEngine {
-  def apply[F[_]: Sync]: Engine[F] = new MemoryEngine[F]
-
-  def applyWithFailingSaveAll[F[_]: Sync](bulkErrors: => List[BulkError]): Engine[F] =
-    new MemoryEngine[F] {
-      override def engineIndex[T: ClassTag: Decoder: Encoder](indexName: String, f: T => String): EngineIndex[F, T] =
-        MemoryEngineIndexWithFailingSaveAll[F, T](indexName, f, bulkErrors)
-    }
+  def apply[F[_]: Concurrent]: Engine[F] = new MemoryEngine[F]
+//
+//  def applyWithFailingSaveAll[F[_]: Concurrent](bulkErrors: => List[BulkError]): Engine[F] =
+//    new MemoryEngine[F] {
+//      override def engineIndex[T: ClassTag: Decoder: Encoder](indexName: String, f: T => String): EngineIndex[F, T] =
+//        MemoryEngineIndexWithFailingSaveAll[F, T](indexName, f, bulkErrors)
+//    }
 }

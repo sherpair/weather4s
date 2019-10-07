@@ -4,13 +4,15 @@ import cats.effect.Sync
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import io.sherpair.w4s.domain.{Countries, Logger, Meta}
+import io.sherpair.w4s.config.{Configuration, Suggestions => Parameters}
+import io.sherpair.w4s.domain.{Countries, Country, Logger, Meta, Suggestions}
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.geo.cache.Cache
 
-class EngineOps[F[_]: Sync] (clusterName: String)(implicit E: Engine[F], L: Logger[F]) {
+class EngineOps[F[_]: Sync] (clusterName: String)(implicit C: Configuration, E: Engine[F], L: Logger[F]) {
 
   val engineOpsCountries: EngineOpsCountries[F] = EngineOpsCountries[F]
+  val engineOpsLocality: EngineOpsLocality[F] = EngineOpsLocality[F]
   val engineOpsMeta: EngineOpsMeta[F] = EngineOpsMeta[F]
 
   def init: F[Cache] =
@@ -26,6 +28,12 @@ class EngineOps[F[_]: Sync] (clusterName: String)(implicit E: Engine[F], L: Logg
   def loadCountries: F[Countries] = engineOpsCountries.loadCountries
 
   def loadMeta: F[Option[Meta]] = engineOpsMeta.loadMeta
+
+  def suggest(country: Country, localityTerm: String, parameters: Parameters): F[Suggestions] =
+    engineOpsLocality.suggest(country, localityTerm, parameters)
+
+  def suggestByAsciiOnly(country: Country, localityTerm: String, parameters: Parameters): F[Suggestions] =
+    engineOpsLocality.suggestByAsciiOnly(country, localityTerm, parameters)
 
   private def createIndexesIfNotExist: F[Cache] =
     for {
@@ -47,6 +55,6 @@ class EngineOps[F[_]: Sync] (clusterName: String)(implicit E: Engine[F], L: Logg
 
 object EngineOps {
 
-  def apply[F[_]: Engine: Logger: Sync](clusterName: String): F[EngineOps[F]] =
+  def apply[F[_]: Engine: Logger: Sync](clusterName: String)(implicit C: Configuration): F[EngineOps[F]] =
     Sync[F].delay(new EngineOps[F](clusterName))
 }

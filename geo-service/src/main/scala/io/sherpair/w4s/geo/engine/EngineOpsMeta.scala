@@ -9,16 +9,16 @@ import io.sherpair.w4s.engine.{Engine, EngineIndex}
 
 private[engine] class EngineOpsMeta[F[_]: Sync](implicit E: Engine[F], L: Logger[F]) {
 
-  private[engine] val engineMeta: EngineIndex[F, Meta] = E.engineIndex[Meta](indexName, _ => id)
+  private[engine] val engineMeta: F[EngineIndex[F, Meta]] = E.engineIndex[Meta](indexName, _ => id)
 
-  def count: F[Long] = engineMeta.count
+  def count: F[Long] = engineMeta.flatMap(_.count)
 
   def createIndexIfNotExists: F[Meta] =
     E.indexExists(indexName).ifM(firstMetaLoad, initialiseMeta)
 
-  def loadMeta: F[Option[Meta]] = engineMeta.getById(id)
+  def loadMeta: F[Option[Meta]] = engineMeta.flatMap(_.getById(id))
 
-  def upsert(meta: Meta): F[String] = engineMeta.upsert(meta)
+  def upsert(meta: Meta): F[String] = engineMeta.flatMap(_.upsert(meta))
 
   private def extractMetaAndLogLastEngineUpdate(maybeMeta: Option[Meta]): F[Meta] = {
     require(maybeMeta.isDefined, Meta.requirement)  // Fatal Error!!
@@ -38,7 +38,8 @@ private[engine] class EngineOpsMeta[F[_]: Sync](implicit E: Engine[F], L: Logger
       _ <- E.createIndex(indexName)
       _ <- logIndexStatus("was created")
       meta = Meta(epochAsLong)
-      _ <- engineMeta.upsert(meta)
+      eM <- engineMeta
+      _ <- eM.upsert(meta)
       _ <- E.refreshIndex(indexName)
     } yield meta
 

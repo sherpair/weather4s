@@ -1,8 +1,10 @@
+/*
 package io.sherpair.w4s.engine.memory
 
 import cats.effect.Sync
 import cats.effect.concurrent.Ref
 import cats.syntax.functor._
+import cats.syntax.option._
 import com.outr.lucene4s.{exact, DirectLucene}
 import com.outr.lucene4s.field.Field
 import com.outr.lucene4s.field.value.FieldAndValue
@@ -74,7 +76,8 @@ object MemoryEngineLocality {
       val index = s.indexOf('x')
       val latitude = s.substring(0, index).toDouble
       val longitude = s.substring(index + 1).toDouble
-      Some(GeoPoint(latitude, longitude))
+      GeoPoint(latitude, longitude).some
     }
   }
 }
+*/

@@ -6,6 +6,7 @@ import cats.syntax.applicativeError._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
+import cats.syntax.option._
 import io.sherpair.w4s.domain.{now, unit, BulkError, Country, Localities, Locality, Logger, Meta}
 import io.sherpair.w4s.domain.Country.countryUnderLoadOrUpdate
 import io.sherpair.w4s.engine.Engine
@@ -27,7 +28,7 @@ class EngineOps[F[_]: cats.Monad: Sync] (clusterName: String)(implicit E: Engine
 
   def prepareEngineFor(country: Country): F[Unit] =
     E.indexExists(country.code)
-      .ifM(deleteIndexFor(country), unit.pure[F]) *> E.createIndex(country.code, Some(Locality.mapping))
+      .ifM(deleteIndexFor(country), unit.pure[F]) *> E.createIndex(country.code, Locality.mapping.some)
 
   def saveAllLocalities(country: Country, localities: Localities): F[List[BulkError]] =
     engineOpsLocality.saveAll(country, localities)
