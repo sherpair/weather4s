@@ -10,14 +10,16 @@ trait Configuration {
 
   val defaultWindowSize: Int = engine.defaultWindowSize
 
-  val healthAttempts: Int = engine.healthCheck.attempts
-  val healthInterval: FiniteDuration = engine.healthCheck.interval
+  val healthAttemptsES: Int = engine.healthCheck.attempts
+  val healthIntervalES: FiniteDuration = engine.healthCheck.interval
 
   val lockAttempts: Int = engine.globalLock.attempts
   val lockGoAhead: Boolean = engine.globalLock.goAheadEvenIfNotAcquired
   val lockInterval: FiniteDuration = engine.globalLock.interval
 
   val defaultAnalyzer: Analyzer = suggestions.analyzer
+
+  def httpPoolSize: Int
 
   def engine: Engine
   def service: Service

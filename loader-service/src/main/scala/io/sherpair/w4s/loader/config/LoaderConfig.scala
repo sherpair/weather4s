@@ -11,6 +11,7 @@ case class LoaderConfig(
   countryDownloadUrl: String,
   engine: Engine,
   httpLoader: Http,
+  httpPoolSize: Int,
   maxEnqueuedCountries: Int,
   service: Service,
   suggestions: Suggestions

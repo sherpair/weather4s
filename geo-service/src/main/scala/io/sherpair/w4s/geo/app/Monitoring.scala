@@ -1,6 +1,7 @@
-package io.sherpair.w4s.app
+package io.sherpair.w4s.geo.app
 
 import cats.effect.Sync
+import cats.syntax.applicativeError._
 import cats.syntax.functor._
 import io.circe.Json
 import io.circe.syntax._
@@ -18,8 +19,8 @@ class Monitoring[F[_]: Sync](implicit C: Configuration, E: Engine[F]) extends Ht
 
   private def healthCheck: F[Json] = {
     for {
-      (attempts, status) <- Sync[F].handleErrorWith[(Int, String)](E.healthCheck) {
-        error => Sync[F].delay((C.healthAttempts, error.getMessage))
+      (attempts, status) <- E.healthCheck.handleErrorWith {
+        error => Sync[F].delay((C.healthAttemptsES, error.getMessage))
       }
     } yield Map(
       "attempts" -> attempts.toString,

@@ -1,7 +1,5 @@
 package io.sherpair.w4s.domain
 
-import java.lang.{StringBuilder => JStringBuilder}
-
 import io.circe.{Decoder, Encoder}
 import io.circe.derivation.{deriveDecoder, deriveEncoder}
 
@@ -33,31 +31,29 @@ object Locality {
   def apply(fields: Array[String]): Locality =
     new Locality(
       geoId = fields(0).trim,
-      name = filter(fields(1).trim),
-      asciiOnly = filter(fields(2).trim),
+      name = normalize(fields(1).trim),
+      asciiOnly = normalize(fields(2).trim),
       coord = GeoPoint(fields),
       tz = fields(fields.length - 2).trim,
       population = fields(fields.length - 5).trim.toIntOption.getOrElse(0),
       updated = fromIsoDate(fields(fields.length - 1).trim)
     )
 
-  // scalastyle:off
-  private def filter(s: String): String = {
+  private def normalize(s: String): String = {
     val len = s.length
-    val sb = new JStringBuilder(len)
-    var i = 0
-    while (i < len) {
-      s.charAt(i) match {
-        case '"' => sb.append("\\\"")
-        case '\\' => sb.append("\\\\")
-        case chr => sb.append(chr)
+    val builder = new java.lang.StringBuilder(len)
+    var ix = 0
+    while (ix < len) {
+      s.charAt(ix) match {
+        case '"' => builder.append("\\\"")
+        case '\\' => builder.append("\\\\")
+        case chr => builder.append(chr)
       }
-      i += 1
+      ix += 1
     }
 
-    if (len == sb.length) s else sb.toString
+    if (len == builder.length) s else builder.toString
   }
-  // scalastyle:on magic.number
 
   implicit val decoder: Decoder[Locality] = deriveDecoder[Locality]
   implicit val encoder: Encoder[Locality] = deriveEncoder[Locality]

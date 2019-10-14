@@ -3,7 +3,7 @@ package io.sherpair.w4s
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
 
-import cats.effect.{ContextShift, IO, SyncIO, Timer}
+import cats.effect.{ContextShift, IO, Timer}
 import io.chrisdavenport.log4cats.noop.NoOpLogger
 import io.sherpair.w4s.config.{
   Cluster, Configuration, Engine => EngineConfig, GlobalLock, HealthCheck, Host, Http, Service, Suggestions
@@ -27,21 +27,22 @@ package object geo {
 
     val countryUnderTest = Country("zw", "Zimbabwe", english)
 
-    val port = 8081
+    val port = 8082
     val host = Host("localhost", port)
     val maxSuggestions = 10
 
     implicit val configuration: GeoConfig = GeoConfig(
       cacheHandlerInterval = 1 second,
       EngineConfig(
-        Cluster("clusterName"),
+        Cluster("w4sCluster"),
         EngineIndex.defaultWindowSize,
         GlobalLock(3, 1 second, true),
         HealthCheck(4, 1 second),
         host
       ),
-      Http(host), Http(host),
-      Service("geo"),
+      httpPoolSize = 2,
+      Http(host), Http(host), Http(host),
+      Service("Geo"),
       Suggestions(stop, 1, maxSuggestions)
     )
   }

@@ -18,7 +18,7 @@ import com.sksamuel.elastic4s.http.JavaClient
 import io.circe.{Decoder, Encoder}
 import io.circe.jawn.decode
 import io.sherpair.w4s.config.Configuration
-import io.sherpair.w4s.domain.{jsonPrinter, Analyzer, W4sError}
+import io.sherpair.w4s.domain.{jsonPrinter, W4sError}
 import io.sherpair.w4s.engine.{Engine, EngineIndex, LocalityIndex}
 
 /*
@@ -53,12 +53,12 @@ class ElasticEngine[F[_]: Timer] private[elastic] (
     )
 
   override def healthCheck: F[(Int, String)] =
-    attemptHealthCheck(C.healthAttempts, C.healthInterval)
+    attemptHealthCheck(C.healthAttemptsES, C.healthIntervalES)
 
   override def indexExists(name: String): F[Boolean] =
     elasticClient.execute(ElasticApi.indexExists(name)).lift.map(_.result.exists)
 
-  override def localityIndex: F[LocalityIndex[F]] = A.delay(new ElasticLocalityIndex[F](elasticClient))
+  override val localityIndex: F[LocalityIndex[F]] = A.delay(new ElasticLocalityIndex[F](elasticClient))
 
   override def refreshIndex(name: String): F[Boolean] =
     elasticClient.execute(ElasticApi.refreshIndex(name)).lift.map(_.isSuccess)
@@ -76,10 +76,10 @@ class ElasticEngine[F[_]: Timer] private[elastic] (
       case Left(error) =>
         if (attempts > 0) Timer[F].sleep(interval) *> attemptHealthCheck(attempts - 1, interval)
         else A.raiseError[(Int, String)](
-          W4sError(s"Engine Health check failed after ${C.healthAttempts} attempts", error.some)
+          W4sError(s"Engine Health check failed after ${C.healthAttemptsES} attempts", error.some)
         )
 
-      case Right(response) => A.delay((C.healthAttempts - attempts + 1, response.result.status))
+      case Right(response) => A.delay((C.healthAttemptsES - attempts + 1, response.result.status))
     }
 
   private def isGlobalLockAcquired(acquired: Boolean, lockAttempt: Int): Either[Int, Boolean] =
@@ -94,7 +94,7 @@ class ElasticEngine[F[_]: Timer] private[elastic] (
 }
 
 object ElasticEngine {
-  def apply[F[_]: Async: Timer](implicit C: Configuration): Engine[F] = {
+  def apply[F[_]: Async: Timer](implicit C: Configuration): Resource[F, Engine[F]] = {
     val cluster: String = s"cluster.name=${C.clusterName}"
 
     val elasticProperties: ElasticProperties =
@@ -102,6 +102,6 @@ object ElasticEngine {
 
     val elasticClient: ElasticClient = ElasticClient(JavaClient(elasticProperties))
 
-    new ElasticEngine[F](elasticClient)
+    Resource.liftF(Async[F].delay(new ElasticEngine[F](elasticClient)))
   }
 }

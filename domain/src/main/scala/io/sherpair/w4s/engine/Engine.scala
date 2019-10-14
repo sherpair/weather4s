@@ -3,7 +3,6 @@ package io.sherpair.w4s.engine
 import scala.reflect.ClassTag
 
 import io.circe.{Decoder, Encoder}
-import io.sherpair.w4s.domain.Analyzer
 
 trait Engine[F[_]] {
 

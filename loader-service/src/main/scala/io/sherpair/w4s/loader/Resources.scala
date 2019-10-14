@@ -5,22 +5,25 @@ import java.util.concurrent.{Executors, ExecutorService, ThreadFactory}
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
 
-import cats.effect.{Blocker, ConcurrentEffect, ContextShift, Resource, Timer}
+import cats.effect.{Blocker, ConcurrentEffect => CE, ContextShift => CS, Resource, Timer}
 import fs2.concurrent.Queue
 import io.sherpair.w4s.domain.{Country, Logger}
 import io.sherpair.w4s.engine.Engine
+import io.sherpair.w4s.http.HttpServer
 import io.sherpair.w4s.loader.app.{Loader, Routes}
 import io.sherpair.w4s.loader.config.LoaderConfig
 import io.sherpair.w4s.loader.engine.EngineOps
-import io.sherpair.w4s.loader.http.LoaderServer
 import org.http4s.client.Client
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.server.Server
 
 object Resources {
 
-  def apply[F[_]: ConcurrentEffect: ContextShift: Engine: Logger: Timer](implicit C: LoaderConfig): Resource[F, Server[F]] =
+  type CallGraphRes[F[_]] = Resource[F, Server[F]]
+
+  def apply[F[_]: CE: CS: Logger: Timer](engineR: Resource[F, Engine[F]])(implicit C: LoaderConfig): CallGraphRes[F] =
     for {
+      implicit0(engine: Engine[F]) <- engineR
       implicit0(engineOps: EngineOps[F]) <- Resource.liftF(EngineOps[F](C.clusterName))
       _ <- Resource.make(engineOps.init)(_ => engineOps.close)
       countryQueue <- Resource.liftF(Queue.boundedNoneTerminated[F, Country](C.maxEnqueuedCountries))
@@ -28,17 +31,17 @@ object Resources {
       client <- blazeClient
       loaderFiber <- Loader(blocker, client, countryQueue)
       routes <- Routes[F](countryQueue, loaderFiber)
-      server <- LoaderServer[F](C.httpLoader.host, routes)
+      server <- HttpServer[F](C.httpLoader.host, "/loader", routes)
     }
     yield server
 
-    private def blazeClient[F[_]: ConcurrentEffect]: Resource[F, Client[F]] =
+    private def blazeClient[F[_]: CE]: Resource[F, Client[F]] =
       BlazeClientBuilder[F](global)
         .withConnectTimeout(30 seconds)
         .withRequestTimeout(30 seconds)
         .resource
 
-    private def blocker[F[_]: ConcurrentEffect]: Resource[F, Blocker] = {
+    private def blocker[F[_]: CE]: Resource[F, Blocker] = {
       val es: ExecutorService = Executors.newSingleThreadExecutor(
         new ThreadFactory {
           def newThread(r: Runnable) = {
@@ -49,6 +52,6 @@ object Resources {
         }
       )
 
-      Blocker.fromExecutorService(ConcurrentEffect[F].delay(es))
+      Blocker.fromExecutorService(CE[F].delay(es))
     }
 }

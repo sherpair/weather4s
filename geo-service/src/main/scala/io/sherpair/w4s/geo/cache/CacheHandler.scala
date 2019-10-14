@@ -29,7 +29,6 @@ class CacheHandler[F[_]: Sync: Timer] private (
 
   private def checkIfCacheRenewalIsNeeded(maybeMeta: Option[Meta], lastCacheRenewal: Long): F[Unit] =
     maybeMeta.fold(L.error("Meta record not found!! Cannot do a cache renewal")) { meta =>
-      // Sync[F].whenA(meta.lastEngineUpdate > lastCacheRenewal)(cacheRenewal(meta))
       cacheRenewal(meta).whenA(meta.lastEngineUpdate > lastCacheRenewal)
     }
 

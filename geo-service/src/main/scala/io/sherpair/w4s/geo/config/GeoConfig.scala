@@ -12,6 +12,8 @@ import pureconfig.generic.auto._
 case class GeoConfig(
   cacheHandlerInterval: FiniteDuration,
   engine: Engine,
+  httpPoolSize: Int,
+  httpAuth: Http,
   httpGeo: Http,
   httpLoader: Http,
   service: Service,

@@ -3,7 +3,6 @@ package io.sherpair.w4s.geo.http
 import cats.effect.ConcurrentEffect
 import cats.syntax.apply._
 import io.circe.syntax._
-import io.sherpair.w4s.config.Http.host
 import io.sherpair.w4s.domain.{Country, Logger}
 import io.sherpair.w4s.geo.config.GeoConfig
 import org.http4s.{EntityBody, ParseFailure, Request, Response, Uri}
@@ -34,7 +33,7 @@ class Loader[F[_]](client: Client[F], country: Country, host: String)(
 object Loader {
 
   def apply[F[_]: ConcurrentEffect: Logger](
-      client: Client[F], country: Country, body: EntityBody[F])(implicit config: GeoConfig
+      client: Client[F], country: Country, body: EntityBody[F])(implicit C: GeoConfig
   ): F[Response[F]] =
-    new Loader[F](client, country, host(config.httpLoader)) send
+    new Loader[F](client, country, C.httpLoader.host.joined) send
 }

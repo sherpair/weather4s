@@ -9,16 +9,19 @@ lazy val global = (project in file("."))
 
 lazy val auth = (project in file("auth-service"))
   .configs(IntegrationTest)
-  // .enablePlugins(DockerPlugin, GraalVMNativeImagePlugin)
+  .dependsOn(domain % "compile -> compile; test -> test")
+  // .enablePlugins(GraalVMNativeImagePlugin)
+  .enablePlugins(AshScriptPlugin, DockerPlugin, JavaAppPackaging)  // Alpine -> Ash Shell
   .settings(commonSettings: _*)
   .settings(dockerSettings: _*)
   .settings(
     name := "auth-service",
+    mainClass in Compile := Some("io.sherpair.w4s.auth.Main"),
     Defaults.itSettings,
     headerSettings(IntegrationTest),
     inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest)),
     parallelExecution in IntegrationTest := false,
-    libraryDependencies ++= fs2 ++ http4s
+    libraryDependencies ++= doobie ++ fs2 ++ http4s
   )
 
 lazy val domain = project
@@ -75,7 +78,7 @@ lazy val commonSettings = Seq(
   // coverageMinimum := 80,
   // coverageFailOnMinimum := true,
   // wartremoverErrors in (Compile, compile) ++= Warts.unsafe,
-  libraryDependencies ++= base ++ enumeratum,
+  libraryDependencies ++= base,
   // trapExit := false,
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),

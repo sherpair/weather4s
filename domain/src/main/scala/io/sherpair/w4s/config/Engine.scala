@@ -12,6 +12,9 @@ case class Engine(
   host: Host
 )
 
-case class GlobalLock(attempts: Int, interval: FiniteDuration, goAheadEvenIfNotAcquired: Boolean)
-case class HealthCheck(attempts: Int, interval: FiniteDuration)
+case class GlobalLock(
+  attempts: Int,
+  interval: FiniteDuration,
+  goAheadEvenIfNotAcquired: Boolean
+)
 

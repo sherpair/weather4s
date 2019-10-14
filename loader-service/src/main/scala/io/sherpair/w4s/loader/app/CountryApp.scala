@@ -21,9 +21,9 @@ class CountryApp[F[_]: Sync](queue: NoneTerminatedQueue[F, Country], loaderFiber
     case request@PUT -> Root / "country" / id =>
       (request.as[Country] >>= { country =>
         queue.enqueue1(country.copy(code = country.code.toLowerCase).some)
-      }) *> Ok()
+      }) *> NoContent()
 
     case GET -> Root / "quit" =>
-      queue.enqueue1(None) >> loaderFiber.join >> L.warn("Country Loader stopped!!") *> Ok()
+      queue.enqueue1(None) >> loaderFiber.join >> L.warn("Country Loader stopped!!") *> NoContent()
   }
 }

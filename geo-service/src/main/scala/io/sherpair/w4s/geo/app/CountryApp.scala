@@ -6,7 +6,6 @@ import cats.syntax.functor._
 import fs2.Stream
 import io.circe.Json
 import io.circe.syntax.EncoderOps
-import io.sherpair.w4s.app.MT
 import io.sherpair.w4s.domain.{Countries, Country, CountryCount, Logger}
 import io.sherpair.w4s.geo.cache.CacheRef
 import io.sherpair.w4s.geo.config.GeoConfig
@@ -16,8 +15,8 @@ import org.http4s.circe._
 import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
 
-class CountryApp[F[_]: ConcurrentEffect](
-    cacheRef: CacheRef[F], client: Client[F])(implicit C: GeoConfig, L: Logger[F]) extends Http4sDsl[F] {
+class CountryApp[F[_]: Logger](
+    cacheRef: CacheRef[F], client: Client[F])(implicit C: GeoConfig, CE: ConcurrentEffect[F]) extends Http4sDsl[F] {
 
   implicit val countryEncoder: EntityEncoder[F, Country] = jsonEncoderOf[F, Country]
   implicit val countryCountEncoder = jsonEncoderOf[F, CountryCount]
@@ -34,14 +33,12 @@ class CountryApp[F[_]: ConcurrentEffect](
     }
   }
 
-  private def addCountry(id: String): F[Response[F]] = {
-    val response = for {
-      maybeCountry <- if (id.length == 2) cacheRef.countryByCode(id.toLowerCase) else cacheRef.countryByName(id)
-      response <- cacheRef.countriesNotAvailableYet.map(addCountryToEngineIfNotAvailableYet(_, maybeCountry, id))
-    } yield response
-
-    ConcurrentEffect[F].flatten(response)
-  }
+  private def addCountry(id: String): F[Response[F]] =
+    CE.delay(id.length == 2).ifM(cacheRef.countryByCode(id.toLowerCase), cacheRef.countryByName(id)) >>= {
+      maybeCountry => cacheRef.countriesNotAvailableYet >>= {
+        addCountryToEngineIfNotAvailableYet(_, maybeCountry, id)
+      }
+    }
 
   private def addCountryToEngineIfNotAvailableYet(
       countriesNotAvailableYet: Countries, maybeCountry: Option[Country], id: String
@@ -62,5 +59,5 @@ class CountryApp[F[_]: ConcurrentEffect](
   private def findCountry(id: String): F[Option[Country]] =
     if (id.length == 2) cacheRef.countryByCode(id.toLowerCase) else cacheRef.countryByName(id)
 
-  private def unknown(id: String): F[Response[F]] = BadRequest(s"Country(${id}) is not known")
+  private def unknown(id: String): F[Response[F]] = NotFound(s"Country(${id}) is not known")
 }

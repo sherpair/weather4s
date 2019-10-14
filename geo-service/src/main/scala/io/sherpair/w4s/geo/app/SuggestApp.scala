@@ -5,7 +5,6 @@ import cats.syntax.flatMap._
 import cats.syntax.functor._
 import fs2.Stream
 import io.circe.syntax.EncoderOps
-import io.sherpair.w4s.app.MT
 import io.sherpair.w4s.config.{Suggestions => Parameters}
 import io.sherpair.w4s.domain.{Analyzer => DefaultAnalyzer, Country, Suggestion, Suggestions}
 import io.sherpair.w4s.geo.cache.CacheRef
@@ -37,7 +36,7 @@ class SuggestApp[F[_]: ConcurrentEffect](
           case Right(parameters) => Ok(suggest(country, localityTerm, parameters), MT)
         }
       }
-      .getOrElse(BadRequest(s"Country(${id}) is not known"))
+      .getOrElse(NotFound(s"Country(${id}) is not known"))
     }
   }
 

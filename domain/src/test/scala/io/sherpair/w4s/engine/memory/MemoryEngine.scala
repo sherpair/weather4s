@@ -34,7 +34,7 @@ class MemoryEngine[F[_]: Concurrent] extends Engine[F] {
   override def healthCheck: F[(Int, String)] = Concurrent[F].delay((1, "green"))
   override def indexExists(name: String): F[Boolean] = indexes.flatMap(_.indexExists(name))
 
-  override def localityIndex: F[LocalityIndex[F]] = MemoryLocalityIndex[F]
+  override val localityIndex: F[LocalityIndex[F]] = MemoryLocalityIndex[F]
 
   override def refreshIndex(name: String): F[Boolean] = true.pure[F]
 }

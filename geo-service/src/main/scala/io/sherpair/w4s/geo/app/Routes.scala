@@ -2,7 +2,6 @@ package io.sherpair.w4s.geo.app
 
 import cats.effect.{ConcurrentEffect, Resource}
 import cats.syntax.applicative._
-import io.sherpair.w4s.app.Monitoring
 import io.sherpair.w4s.domain.Logger
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.geo.cache.CacheRef
