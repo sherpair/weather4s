@@ -5,35 +5,31 @@ import scala.io.Source.fromResource
 import cats.effect.{Resource, Sync}
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import io.sherpair.w4s.config.Configuration
 import io.sherpair.w4s.domain.{epochAsLong, BulkError, Countries, Country, Logger}
 import io.sherpair.w4s.domain.Country.indexName
 import io.sherpair.w4s.engine.{Engine, EngineIndex}
 import io.sherpair.w4s.engine.EngineIndex.bulkErrorMessage
+import io.sherpair.w4s.geo.config.GeoConfig
 
-private[engine] class EngineOpsCountries[F[_]: Sync](implicit C: Configuration, E: Engine[F], L: Logger[F]) {
-
-  private[engine] val engineCountry: F[EngineIndex[F, Country]] = E.engineIndex[Country](indexName, _.code)
-
-  private val jsonFile: String = "countries.json"
-
-  def count: F[Long] = engineCountry.flatMap(_.count)
+private[engine] class EngineOpsCountries[F[_]: Sync](
+    countryIndex: EngineIndex[F, Country])(implicit C: GeoConfig, E: Engine[F], L: Logger[F]
+) {
+  def count: F[Long] = countryIndex.count
 
   def createIndexIfNotExists: F[Countries] =
     E.indexExists(indexName).ifM(firstLoadOfCountriesFromEngine, firstLoadOfCountriesFromResource)
 
-  def loadCountries: F[Countries] = engineCountry.flatMap(_.loadAll())
+  def loadCountries: F[Countries] = countryIndex.loadAll()
 
   // Must only be used for testing
-  def upsert(country: Country): F[String] = engineCountry.flatMap(_.upsert(country))
+  def upsert(country: Country): F[String] = countryIndex.upsert(country)
 
   private def decodeAndStoreCountries(json: String): F[Countries] =
     for {
       countries <- Country.decodeFromJson[F](json)
       _ <- E.createIndex(indexName)
       _ <- logIndexStatus("was created")
-      eC <- engineCountry
-      listOfBulkErrors <- eC.saveAll(countries)
+      listOfBulkErrors <- countryIndex.saveAll(countries)
       _ <- E.refreshIndex(indexName)
       _ <- logCountOfStoredCountriesIfNoErrors(countries.size, listOfBulkErrors)
     } yield countries
@@ -47,7 +43,7 @@ private[engine] class EngineOpsCountries[F[_]: Sync](implicit C: Configuration, 
 
   private[engine] def firstLoadOfCountriesFromResource: F[Countries] =
     Resource
-      .fromAutoCloseable(Sync[F].delay(fromResource(jsonFile)))
+      .fromAutoCloseable(Sync[F].delay(fromResource(C.countries)))
       .use(source => decodeAndStoreCountries(source.mkString))
 
   private def logCountOfCountriesLoadedFromEngine(countries: Countries): F[Unit] = {
@@ -67,6 +63,8 @@ private[engine] class EngineOpsCountries[F[_]: Sync](implicit C: Configuration, 
 }
 
 object EngineOpsCountries {
-  def apply[F[_]: Logger: Sync](implicit C: Configuration, E: Engine[F]): EngineOpsCountries[F] =
-    new EngineOpsCountries[F]()
+
+  def apply[F[_]: Sync](
+      countryIndex: EngineIndex[F, Country])(implicit C: GeoConfig, E: Engine[F], L: Logger[F]
+  ): F[EngineOpsCountries[F]] = Sync[F].delay(new EngineOpsCountries[F](countryIndex))
 }

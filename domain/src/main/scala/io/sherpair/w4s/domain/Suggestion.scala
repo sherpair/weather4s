@@ -21,7 +21,7 @@ object Suggestion {
         coord <- hCursor.get[List[Double]]("coord")
         tz <- hCursor.get[String]("tz")
       }
-      yield Suggestion(name, GeoPoint(coord.head, coord.last), tz)
+      yield Suggestion(name, GeoPoint(lat = coord.last, lon = coord.head), tz)
 
   implicit val suggestionEncoder: Encoder[Suggestion] = deriveEncoder[Suggestion]
 }

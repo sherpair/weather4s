@@ -4,5 +4,3 @@ case class Host(address: String, port: Int) {
 
   val joined: String = s"${address}:${port}"
 }
-
-case class Http(host: Host)

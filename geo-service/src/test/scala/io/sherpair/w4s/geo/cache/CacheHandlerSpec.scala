@@ -28,8 +28,8 @@ class CacheHandlerSpec extends BaseSpec {
             // "countries" index for the country under test (ZW), and thereafter the unique document in
             // the "meta" index, which informs the CacheHandler when the engine gets updated.
             // It's indeed the update of the "meta" index to trigger the cache renewal by the CacheHandler.
-            _ <- engineOps.engineOpsCountries.upsert(expectedCountry)
-            _ <- engineOps.engineOpsMeta.upsert(Meta(Instant.now.toEpochMilli))
+            _ <- engineOps.upsertCountry(expectedCountry)
+            _ <- engineOps.upsertMeta(Meta(Instant.now.toEpochMilli))
 
             // The CacheHandler should stop straight after the 1st iteration.
             _ <- cacheRef.stopCacheHandler

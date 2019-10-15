@@ -52,7 +52,7 @@ class DoobieRepository[F[_]] private[doobie](
 
 object DoobieRepository {
 
-  def apply[F[_]: Async: ContextShift: Logger: Timer](implicit C: AuthConfig): Resource[F, Repository[F]] =
+  def apply[F[_]: Async: ContextShift: Timer](implicit C: AuthConfig, L: Logger[F]): Resource[F, Repository[F]] =
     for {
       connectEC <- ExecutionContexts.fixedThreadPool(C.db.connectionPool)
       db = C.db

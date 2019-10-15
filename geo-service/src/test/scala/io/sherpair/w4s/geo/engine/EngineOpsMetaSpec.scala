@@ -6,6 +6,7 @@ import io.sherpair.w4s.domain.Meta.indexName
 import io.sherpair.w4s.geo.{BaseSpec, ImplicitsOpsIO}
 
 class EngineOpsMetaSpec extends BaseSpec {
+/*
 
   "createIndexIfNotExists" when {
     "the \"meta\" index does not exist yet in the engine" should {
@@ -14,7 +15,7 @@ class EngineOpsMetaSpec extends BaseSpec {
           engineOps <- engineOpsF
           metaFromInitialise <- engineOps.engineOpsMeta.createIndexIfNotExists
           // Also checking the Meta object is successfully saved in the engine
-          metaFromEngine <- engineOps.engineOpsMeta.loadMeta
+          metaFromEngine <- engineOps.loadMeta
         }
         yield (metaFromInitialise, metaFromEngine)
 
@@ -54,4 +55,5 @@ class EngineOpsMetaSpec extends BaseSpec {
       }
     }
   }
+*/
 }

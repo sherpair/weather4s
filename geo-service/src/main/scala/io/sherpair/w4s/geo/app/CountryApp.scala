@@ -15,8 +15,9 @@ import org.http4s.circe._
 import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
 
-class CountryApp[F[_]: Logger](
-    cacheRef: CacheRef[F], client: Client[F])(implicit C: GeoConfig, CE: ConcurrentEffect[F]) extends Http4sDsl[F] {
+class CountryApp[F[_]](
+    cacheRef: CacheRef[F], client: Client[F])(implicit C: GeoConfig, CE: ConcurrentEffect[F], L: Logger[F]
+) extends Http4sDsl[F] {
 
   implicit val countryEncoder: EntityEncoder[F, Country] = jsonEncoderOf[F, Country]
   implicit val countryCountEncoder = jsonEncoderOf[F, CountryCount]

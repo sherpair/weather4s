@@ -12,12 +12,14 @@ object Resources {
 
   type CallGraphRes[F[_]] = Resource[F, Server[F]]
 
-  def apply[F[_]: CE: CS: Logger: Timer](reposR: Resource[F, Repository[F]])(implicit C: AuthConfig): CallGraphRes[F] =
+  def apply[F[_]: CE: CS: Timer](
+      reposR: Resource[F, Repository[F]])(implicit C: AuthConfig, L: Logger[F]
+  ): CallGraphRes[F] =
     for {
       implicit0(repository: Repository[F]) <- reposR
       _ <- repository.init
       routes <- Routes[F]
-      server <- HttpServer[F](C.httpAuth.host, "/auth", routes)
+      server <- HttpServer[F](C.hostAuth, C.httpPoolSize, "/auth", routes)
     }
     yield server
 }

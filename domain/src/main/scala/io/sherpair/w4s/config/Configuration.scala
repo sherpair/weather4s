@@ -8,6 +8,8 @@ trait Configuration {
 
   val clusterName: String = engine.cluster.name
 
+  val defaultAnalyzer: Analyzer = suggestions.analyzer
+
   val defaultWindowSize: Int = engine.defaultWindowSize
 
   val healthAttemptsES: Int = engine.healthCheck.attempts
@@ -17,11 +19,8 @@ trait Configuration {
   val lockGoAhead: Boolean = engine.globalLock.goAheadEvenIfNotAcquired
   val lockInterval: FiniteDuration = engine.globalLock.interval
 
-  val defaultAnalyzer: Analyzer = suggestions.analyzer
-
-  def httpPoolSize: Int
-
   def engine: Engine
+  def httpPoolSize: Int
   def service: Service
   def suggestions: Suggestions
 }

@@ -11,8 +11,9 @@ import org.http4s.HttpRoutes
 
 object Routes {
 
-  def apply[F[_]: ConcurrentEffect: Engine: EngineOps: Logger](
-      countryQueue: NoneTerminatedQueue[F, Country], loaderFiber: Fiber[F, Unit])(implicit C: LoaderConfig
+  def apply[F[_]: ConcurrentEffect](
+      countryQueue: NoneTerminatedQueue[F, Country], loaderFiber: Fiber[F, Unit])(
+      implicit C: LoaderConfig, engine: Engine[F], engineOps: EngineOps[F], L: Logger[F]
   ): Resource[F, Seq[HttpRoutes[F]]] =
     Resource.liftF(
       Seq(

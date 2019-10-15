@@ -8,12 +8,11 @@ import cats.syntax.functor._
 import fs2.concurrent.NoneTerminatedQueue
 import io.sherpair.w4s.domain.{startOfTheDay, unit, Country, Logger}
 import io.sherpair.w4s.domain.Country.countryUnderLoadOrUpdate
-import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.loader.config.LoaderConfig
 import io.sherpair.w4s.loader.engine.EngineOps
 import org.http4s.client.Client
 
-class Loader[F[_]: ContextShift: Engine: Sync](
+class Loader[F[_]: ContextShift: Sync](
     blocker: Blocker, client: Client[F], queue: NoneTerminatedQueue[F, Country])(
     implicit C: LoaderConfig, engineOps: EngineOps[F], L: Logger[F]
 ) {
@@ -22,7 +21,7 @@ class Loader[F[_]: ContextShift: Engine: Sync](
 
   private def gotCountry(country: Country): F[Unit] =
     for {
-      maybeCountry <- engineOps.engineOpsCountries.find(country)
+      maybeCountry <- engineOps.findCountry(country)
       _ <- isValidUpsertCountryRequest(country, maybeCountry).ifM(
         LoaderRun[F](blocker, client, country),
         L.debug(s"${country} unknown or under load/update or recently added/updated"))
@@ -39,9 +38,9 @@ class Loader[F[_]: ContextShift: Engine: Sync](
 
 object Loader {
 
-  def apply[F[_]: Concurrent: ContextShift: Engine: Logger](
+  def apply[F[_]: Concurrent: ContextShift](
       blocker: Blocker, client: Client[F], queue: NoneTerminatedQueue[F, Country])(
-      implicit C: LoaderConfig, engineOps: EngineOps[F]
+      implicit C: LoaderConfig, engineOps: EngineOps[F], L: Logger[F]
   ): Resource[F, Fiber[F, Unit]] =
     Resource.liftF(blocker.blockOn(new Loader[F](blocker, client, queue).start.start))
 }

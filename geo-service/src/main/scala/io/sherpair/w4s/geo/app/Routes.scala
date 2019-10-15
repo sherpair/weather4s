@@ -12,8 +12,9 @@ import org.http4s.client.Client
 
 object Routes {
 
-  def apply[F[_]: ConcurrentEffect: Engine: Logger](
-      cacheRef: CacheRef[F], client: Client[F], engineOps: EngineOps[F])(implicit C: GeoConfig
+  def apply[F[_]: ConcurrentEffect](
+      cacheRef: CacheRef[F], client: Client[F], engineOps: EngineOps[F])(
+      implicit C: GeoConfig, E: Engine[F], L: Logger[F]
   ): Resource[F, Seq[HttpRoutes[F]]] =
     Resource.liftF(
       Seq(

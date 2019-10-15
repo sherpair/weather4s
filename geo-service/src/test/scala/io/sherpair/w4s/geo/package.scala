@@ -6,14 +6,14 @@ import scala.concurrent.duration._
 import cats.effect.{ContextShift, IO, Timer}
 import io.chrisdavenport.log4cats.noop.NoOpLogger
 import io.sherpair.w4s.config.{
-  Cluster, Configuration, Engine => EngineConfig, GlobalLock, HealthCheck, Host, Http, Service, Suggestions
+  Cluster, Configuration, Engine => EngineConfig, GlobalLock, HealthCheck, Host, Service, Suggestions
 }
 import io.sherpair.w4s.domain.{Country, Logger}
 import io.sherpair.w4s.domain.Analyzer.{english, stop}
 import io.sherpair.w4s.engine.{Engine, EngineIndex}
 import io.sherpair.w4s.engine.memory.MemoryEngine
 import io.sherpair.w4s.geo.cache.CacheRef
-import io.sherpair.w4s.geo.config.GeoConfig
+import io.sherpair.w4s.geo.config.{GeoConfig, SSLGeo}
 import io.sherpair.w4s.geo.engine.EngineOps
 import org.scalatest.{Matchers, OptionValues, PrivateMethodTester, WordSpec}
 
@@ -40,9 +40,12 @@ package object geo {
         HealthCheck(4, 1 second),
         host
       ),
+      host, host, host,
       httpPoolSize = 2,
-      Http(host), Http(host), Http(host),
       Service("Geo"),
+      SSLGeo(
+        "SunX509", host, "ssl/weather4s.p12", "w4s123456", "NativePRNGNonBlocking", "PKCS12"
+      ),
       Suggestions(stop, 1, maxSuggestions)
     )
   }
@@ -61,7 +64,7 @@ package object geo {
         // The cache should already contain all known countries with the property "updated" always set to "epoch".
         cacheRef <- CacheRef[IO](countriesCache)
       }
-        yield (cacheRef -> engineOps)
+      yield (cacheRef -> engineOps)
     }
   }
 

@@ -9,7 +9,7 @@ import org.http4s.HttpRoutes
 
 object Routes {
 
-  def apply[F[_]: CE: Logger](implicit C: AuthConfig, R: Repository[F]): Resource[F, Seq[HttpRoutes[F]]] =
+  def apply[F[_]: CE](implicit C: AuthConfig, L: Logger[F], R: Repository[F]): Resource[F, Seq[HttpRoutes[F]]] =
     for {
       implicit0(repositoryUserOps: RepositoryUserOps[F]) <- R.userRepositoryOps
       routes <- Resource.liftF(

@@ -22,7 +22,7 @@ import org.http4s.client.Client
 
 class LoaderRun[F[_]: ContextShift](
     blocker: Blocker, client: Client[F], country: Country)(
-    implicit C: LoaderConfig, eOps: EngineOps[F], L: Logger[F], S: Sync[F]
+    implicit C: LoaderConfig, engineOps: EngineOps[F], L: Logger[F], S: Sync[F]
 ) {
 
   val countryCodeUpperCase = country.code.toUpperCase
@@ -34,8 +34,8 @@ class LoaderRun[F[_]: ContextShift](
         S.delay(new ZipInputStream(Files.newInputStream(path)))
       )(
         _.tailRecM[F, ZipInputStream](locateZipEntry(_)) >>= {
-          eOps.prepareEngineFor(country) >> streamToEngine(_) >>= { lA =>
-            eOps.updateEngineFor(country, lA.getOrElse(LoaderAccums(0L, 0)))
+          engineOps.prepareEngineFor(country) >> streamToEngine(_) >>= { lA =>
+            engineOps.updateEngineFor(country, lA.getOrElse(LoaderAccums(0L, 0)))
           }
         }
       )(
@@ -45,7 +45,7 @@ class LoaderRun[F[_]: ContextShift](
     .handleErrorWith(logDownloadError(_))
 
   private def chunkToEngine(country: Country, localities: List[Locality]): F[(Int, List[BulkError])] =
-    eOps.saveAllLocalities(country, localities) >>= {errors => (localities.size, errors).pure[F]}
+    engineOps.saveAllLocalities(country, localities) >>= {errors => (localities.size, errors).pure[F]}
 
   private def download(uri: String): F[Path] =
     L.info(s"""Download of "${uri}" begins...""") *> S.bracket(
@@ -98,9 +98,8 @@ class LoaderRun[F[_]: ContextShift](
 
 object LoaderRun {
 
-  def apply[F[_]: ContextShift](
-    blocker: Blocker, client: Client[F], country: Country)(
-    implicit C: LoaderConfig, E: EngineOps[F], L: Logger[F], S: Sync[F]
+  def apply[F[_]: ContextShift: Sync](
+      blocker: Blocker, client: Client[F], country: Country)(implicit C: LoaderConfig, E: EngineOps[F], L: Logger[F]
   ): F[Unit] =
     new LoaderRun[F](blocker, client, country).start
 }

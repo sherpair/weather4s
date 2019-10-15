@@ -7,18 +7,16 @@ import io.sherpair.w4s.domain.{epochAsLong, toIsoDate, Logger, Meta}
 import io.sherpair.w4s.domain.Meta.{id, indexName}
 import io.sherpair.w4s.engine.{Engine, EngineIndex}
 
-private[engine] class EngineOpsMeta[F[_]: Sync](implicit E: Engine[F], L: Logger[F]) {
+private[engine] class EngineOpsMeta[F[_]: Sync](metaIndex: EngineIndex[F, Meta])(implicit E: Engine[F], L: Logger[F]) {
 
-  private[engine] val engineMeta: F[EngineIndex[F, Meta]] = E.engineIndex[Meta](indexName, _ => id)
-
-  def count: F[Long] = engineMeta.flatMap(_.count)
+  def count: F[Long] = metaIndex.count
 
   def createIndexIfNotExists: F[Meta] =
     E.indexExists(indexName).ifM(firstMetaLoad, initialiseMeta)
 
-  def loadMeta: F[Option[Meta]] = engineMeta.flatMap(_.getById(id))
+  def loadMeta: F[Option[Meta]] = metaIndex.getById(id)
 
-  def upsert(meta: Meta): F[String] = engineMeta.flatMap(_.upsert(meta))
+  def upsert(meta: Meta): F[String] = metaIndex.upsert(meta)
 
   private def extractMetaAndLogLastEngineUpdate(maybeMeta: Option[Meta]): F[Meta] = {
     require(maybeMeta.isDefined, Meta.requirement)  // Fatal Error!!
@@ -38,8 +36,7 @@ private[engine] class EngineOpsMeta[F[_]: Sync](implicit E: Engine[F], L: Logger
       _ <- E.createIndex(indexName)
       _ <- logIndexStatus("was created")
       meta = Meta(epochAsLong)
-      eM <- engineMeta
-      _ <- eM.upsert(meta)
+      _ <- metaIndex.upsert(meta)
       _ <- E.refreshIndex(indexName)
     } yield meta
 
@@ -48,5 +45,7 @@ private[engine] class EngineOpsMeta[F[_]: Sync](implicit E: Engine[F], L: Logger
 }
 
 object EngineOpsMeta {
-  def apply[F[_]: Logger: Sync](implicit E: Engine[F]): EngineOpsMeta[F] = new EngineOpsMeta[F]
+
+  def apply[F[_]: Sync](metaIndex: EngineIndex[F, Meta])(implicit E: Engine[F], L: Logger[F]): F[EngineOpsMeta[F]] =
+    Sync[F].delay(new EngineOpsMeta[F](metaIndex))
 }

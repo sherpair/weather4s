@@ -11,9 +11,7 @@ import org.http4s.Status.InternalServerError
 import org.http4s.circe._
 import org.http4s.client.Client
 
-class Loader[F[_]](client: Client[F], country: Country, host: String)(
-    implicit CE: ConcurrentEffect[F], L: Logger[F]
-) {
+class Loader[F[_]](client: Client[F], country: Country, host: String)(implicit CE: ConcurrentEffect[F], L: Logger[F]) {
 
   private val send: F[Response[F]] = {
     val uri = s"http://${host}/loader/country/${country.code}"
@@ -32,8 +30,8 @@ class Loader[F[_]](client: Client[F], country: Country, host: String)(
 
 object Loader {
 
-  def apply[F[_]: ConcurrentEffect: Logger](
-      client: Client[F], country: Country, body: EntityBody[F])(implicit C: GeoConfig
+  def apply[F[_]: ConcurrentEffect](
+      client: Client[F], country: Country, body: EntityBody[F])(implicit C: GeoConfig, L: Logger[F]
   ): F[Response[F]] =
-    new Loader[F](client, country, C.httpLoader.host.joined) send
+    new Loader[F](client, country, C.hostLoader.joined) send
 }

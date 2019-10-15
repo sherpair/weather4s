@@ -11,8 +11,8 @@ import org.http4s.{EntityDecoder, HttpRoutes}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 
-class CountryApp[F[_]: Sync](queue: NoneTerminatedQueue[F, Country], loaderFiber: Fiber[F, Unit])(
-    implicit C: LoaderConfig, L: Logger[F]
+class CountryApp[F[_]: Sync](
+    queue: NoneTerminatedQueue[F, Country], loaderFiber: Fiber[F, Unit])(implicit C: LoaderConfig, L: Logger[F]
 ) extends Http4sDsl[F] {
 
   implicit val countryEncoder: EntityDecoder[F, Country] = jsonOf[F, Country]

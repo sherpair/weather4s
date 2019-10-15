@@ -17,14 +17,20 @@ import com.sksamuel.elastic4s.requests.searches.suggestion.{CompletionSuggestion
 import io.circe.{parser, Json}
 import io.circe.jawn.decode
 import io.sherpair.w4s.config.{Suggestions => Parameters}
-import io.sherpair.w4s.domain.{unit, BulkError, Country, Localities, Locality, Suggestion, SuggestionMeta, Suggestions}
+import io.sherpair.w4s.domain.{
+  unit, BulkError, Country, Localities, Locality, Suggestion, SuggestionMeta, Suggestions
+}
 import io.sherpair.w4s.engine.LocalityIndex
 
 class ElasticLocalityIndex[F[_]: Async] private[elastic] (elasticClient: ElasticClient) extends LocalityIndex[F] {
 
   // Not used.
-  // implicit val aggReader: AggReader[Locality] = (json: String) => decode[Locality](json).fold(Failure(_), Success(_))
-  implicit val hitReader: HitReader[Locality] = (hit: Hit) => decode[Locality](hit.sourceAsString).fold(Failure(_), Success(_))
+  // implicit val aggReader: AggReader[Locality] =
+  //   (json: String) => decode[Locality](json).fold(Failure(_), Success(_))
+
+  implicit val hitReader: HitReader[Locality] =
+    (hit: Hit) => decode[Locality](hit.sourceAsString).fold(Failure(_), Success(_))
+
   // Not used.
   // implicit val indexable: Indexable[Locality] = (l: Locality) => jsonPrinter(Encoder[Locality].apply(l))
 
@@ -82,7 +88,6 @@ class ElasticLocalityIndex[F[_]: Async] private[elastic] (elasticClient: Elastic
     ).lift.map(response => suggestResponse(response))
 
   private def suggestResponse(response: Response[SearchResponse]): Suggestions =
-    // val options: Seq[CompletionSuggestionOption] = response.completionSuggestion(suggestionId).head._2.options
     (for {
       body <- response.body
       json: Json = parser.parse(body).getOrElse(Json.Null)

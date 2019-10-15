@@ -21,7 +21,7 @@ object Resources {
 
   type CallGraphRes[F[_]] = Resource[F, Server[F]]
 
-  def apply[F[_]: CE: CS: Logger: Timer](engineR: Resource[F, Engine[F]])(implicit C: LoaderConfig): CallGraphRes[F] =
+  def apply[F[_]: CE: CS: Timer](engineR: Resource[F, Engine[F]])(implicit C: LoaderConfig, L: Logger[F]): CallGraphRes[F] =
     for {
       implicit0(engine: Engine[F]) <- engineR
       implicit0(engineOps: EngineOps[F]) <- Resource.liftF(EngineOps[F](C.clusterName))
@@ -31,7 +31,7 @@ object Resources {
       client <- blazeClient
       loaderFiber <- Loader(blocker, client, countryQueue)
       routes <- Routes[F](countryQueue, loaderFiber)
-      server <- HttpServer[F](C.httpLoader.host, "/loader", routes)
+      server <- HttpServer[F](C.hostLoader, C.httpPoolSize, "/loader", routes)
     }
     yield server
 

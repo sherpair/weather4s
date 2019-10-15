@@ -4,16 +4,19 @@ import cats.effect.Sync
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import io.sherpair.w4s.config.{Configuration, Suggestions => Parameters}
+import io.sherpair.w4s.config.{Suggestions => Parameters}
 import io.sherpair.w4s.domain.{Countries, Country, Logger, Meta, Suggestions}
+import io.sherpair.w4s.domain.Meta.id
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.geo.cache.Cache
+import io.sherpair.w4s.geo.config.GeoConfig
 
-class EngineOps[F[_]: Sync] (clusterName: String)(implicit C: Configuration, E: Engine[F], L: Logger[F]) {
-
-  val engineOpsCountries: EngineOpsCountries[F] = EngineOpsCountries[F]
-  val engineOpsLocality: EngineOpsLocality[F] = EngineOpsLocality[F]
-  val engineOpsMeta: EngineOpsMeta[F] = EngineOpsMeta[F]
+class EngineOps[F[_]: Sync] (
+    clusterName: String,
+    engineOpsCountries: EngineOpsCountries[F],
+    engineOpsLocality: EngineOpsLocality[F],
+    engineOpsMeta: EngineOpsMeta[F]
+  )(implicit E: Engine[F], L: Logger[F]) {
 
   def init: F[Cache] =
     for {
@@ -35,6 +38,10 @@ class EngineOps[F[_]: Sync] (clusterName: String)(implicit C: Configuration, E: 
   def suggestByAsciiOnly(country: Country, localityTerm: String, parameters: Parameters): F[Suggestions] =
     engineOpsLocality.suggestByAsciiOnly(country, localityTerm, parameters)
 
+  def upsertCountry(country: Country): F[String] = engineOpsCountries.upsert(country)
+
+  def upsertMeta(meta: Meta): F[String] = engineOpsMeta.upsert(meta)
+
   private def createIndexesIfNotExist: F[Cache] =
     for {
       countries <- engineOpsCountries.createIndexIfNotExists
@@ -55,6 +62,16 @@ class EngineOps[F[_]: Sync] (clusterName: String)(implicit C: Configuration, E: 
 
 object EngineOps {
 
-  def apply[F[_]: Engine: Logger: Sync](clusterName: String)(implicit C: Configuration): F[EngineOps[F]] =
-    Sync[F].delay(new EngineOps[F](clusterName))
+  def apply[F[_]: Sync](clusterName: String)(implicit C: GeoConfig, E: Engine[F], L: Logger[F]): F[EngineOps[F]] =
+    for {
+      countryIndex <- E.engineIndex[Country](Country.indexName, _.code)
+      engineOpsCountries <- EngineOpsCountries[F](countryIndex)
+
+      localityIndex <- E.localityIndex
+      engineOpsLocality <- EngineOpsLocality[F](localityIndex)
+
+      metaIndex <- E.engineIndex[Meta](Meta.indexName, _ => id)
+      engineOpsMeta <- EngineOpsMeta[F](metaIndex)
+    }
+    yield new EngineOps[F](clusterName, engineOpsCountries, engineOpsLocality, engineOpsMeta)
 }

@@ -5,7 +5,7 @@ import io.circe.derivation.{deriveDecoder, deriveEncoder}
 
 case class GeoPoint(lat: Double, lon: Double) {
 
-  val forLocality: String = s"${this.lat},${this.lon}"
+  val forLocality: String = s"${this.lon},${this.lat}"
 }
 
 // scalastyle:off magic.number
@@ -22,11 +22,11 @@ object GeoPoint {
   implicit val geoDecoder: Decoder[GeoPoint] = deriveDecoder[GeoPoint]
   implicit val geoEncoder: Encoder[GeoPoint] = deriveEncoder[GeoPoint]
 
-  implicit class GeoPointConverter(locality: String) {
-    def toGeoPoint: GeoPoint =
-      locality.split("'") match {
-        case Array(latitude, longitude) => GeoPoint(latitude.toDouble, longitude.toDouble)
-      }
-  }
+//  implicit class GeoPointConverter(locality: String) {
+//    def toGeoPoint: GeoPoint =
+//      locality.split("'") match {
+//        case Array(latitude, longitude) => GeoPoint(latitude.toDouble, longitude.toDouble)
+//      }
+//  }
 }
 // scalastyle:on magic.number

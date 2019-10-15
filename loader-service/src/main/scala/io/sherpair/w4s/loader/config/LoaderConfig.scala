@@ -1,6 +1,6 @@
 package io.sherpair.w4s.loader.config
 
-import io.sherpair.w4s.config.{Configuration, Engine, Http, Service, Suggestions}
+import io.sherpair.w4s.config.{Configuration, Engine, Host, Service, Suggestions}
 import pureconfig.ConfigSource
 // Needed.
 import pureconfig.module.enumeratum._
@@ -10,7 +10,7 @@ import pureconfig.generic.auto._
 case class LoaderConfig(
   countryDownloadUrl: String,
   engine: Engine,
-  httpLoader: Http,
+  hostLoader: Host,
   httpPoolSize: Int,
   maxEnqueuedCountries: Int,
   service: Service,

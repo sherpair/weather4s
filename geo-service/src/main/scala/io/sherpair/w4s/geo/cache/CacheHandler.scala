@@ -11,8 +11,8 @@ import io.sherpair.w4s.domain.{epochAsLong, unit, Countries, Country, Logger, Me
 import io.sherpair.w4s.geo.engine.EngineOps
 
 class CacheHandler[F[_]: Sync: Timer] private (
-  cacheRef: CacheRef[F], engineOps: EngineOps[F], cacheHandlerInterval: FiniteDuration
-)(implicit L: Logger[F]) {
+  cacheRef: CacheRef[F], engineOps: EngineOps[F], cacheHandlerInterval: FiniteDuration)(implicit L: Logger[F]
+) {
 
   def start: F[Unit] =
     L.info("Starting CacheHandler") *>
@@ -51,7 +51,8 @@ class CacheHandler[F[_]: Sync: Timer] private (
 
 object CacheHandler {
 
-  def apply[F[_]: Logger: Timer](cacheRef: CacheRef[F], engineOps: EngineOps[F], cacheHandlerInterval: FiniteDuration)(
-      implicit C: Concurrent[F]): F[Fiber[F, Unit]] =
-    C.start(new CacheHandler[F](cacheRef, engineOps, cacheHandlerInterval).start)
+  def apply[F[_]: Concurrent: Timer](
+      cacheRef: CacheRef[F], engineOps: EngineOps[F], cacheHandlerInterval: FiniteDuration)(implicit L: Logger[F]
+  ): F[Fiber[F, Unit]] =
+    Concurrent[F].start(new CacheHandler[F](cacheRef, engineOps, cacheHandlerInterval).start)
 }

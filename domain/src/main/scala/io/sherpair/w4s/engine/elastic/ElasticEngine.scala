@@ -29,7 +29,8 @@ import io.sherpair.w4s.engine.{Engine, EngineIndex, LocalityIndex}
        In Elastic4s "acquireGlobalLock" does not work because the request has no body.
  */
 class ElasticEngine[F[_]: Timer] private[elastic] (
-    elasticClient: ElasticClient)(implicit A: Async[F], C: Configuration) extends Engine[F] {
+    elasticClient: ElasticClient)(implicit A: Async[F], C: Configuration
+) extends Engine[F] {
 
   override def close: F[Unit] = A.delay(elasticClient.close)
 
@@ -94,6 +95,7 @@ class ElasticEngine[F[_]: Timer] private[elastic] (
 }
 
 object ElasticEngine {
+
   def apply[F[_]: Async: Timer](implicit C: Configuration): Resource[F, Engine[F]] = {
     val cluster: String = s"cluster.name=${C.clusterName}"
 

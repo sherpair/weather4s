@@ -9,14 +9,16 @@ import cats.syntax.functor._
 import cats.syntax.option._
 import io.sherpair.w4s.domain.{now, unit, BulkError, Country, Localities, Locality, Logger, Meta}
 import io.sherpair.w4s.domain.Country.countryUnderLoadOrUpdate
+import io.sherpair.w4s.domain.Meta.id
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.loader.domain.LoaderAccums
 
-class EngineOps[F[_]: cats.Monad: Sync] (clusterName: String)(implicit E: Engine[F], L: Logger[F]) {
-
-  val engineOpsCountries: EngineOpsCountries[F] = EngineOpsCountries[F]
-  val engineOpsLocality: EngineOpsLocality[F] = EngineOpsLocality[F]
-  val engineOpsMeta: EngineOpsMeta[F] = EngineOpsMeta[F]
+class EngineOps[F[_]: Sync] (
+  clusterName: String,
+  engineOpsCountries: EngineOpsCountries[F],
+  engineOpsLocality: EngineOpsLocality[F],
+  engineOpsMeta: EngineOpsMeta[F]
+)(implicit E: Engine[F], L: Logger[F]) {
 
   val init: F[Unit] =
     E.healthCheck.flatMap[Unit](res => logEngineStatus(res._1, res._2))
@@ -25,6 +27,8 @@ class EngineOps[F[_]: cats.Monad: Sync] (clusterName: String)(implicit E: Engine
     L.info(s"Closing connection with ES cluster(${clusterName})") *> E.close
 
   def countLocalities(country: Country): F[Long] = engineOpsLocality.count(country)
+
+  def findCountry(country: Country): F[Option[Country]] = engineOpsCountries.find(country)
 
   def prepareEngineFor(country: Country): F[Unit] =
     E.indexExists(country.code)
@@ -81,6 +85,16 @@ class EngineOps[F[_]: cats.Monad: Sync] (clusterName: String)(implicit E: Engine
 
 object EngineOps {
 
-  def apply[F[_]: Engine: Logger: Sync](clusterName: String): F[EngineOps[F]] =
-    Sync[F].delay(new EngineOps[F](clusterName))
+  def apply[F[_]: Sync](clusterName: String)(implicit E: Engine[F], L: Logger[F]): F[EngineOps[F]] =
+    for {
+      countryIndex <- E.engineIndex[Country](Country.indexName, _.code)
+      engineOpsCountries <- EngineOpsCountries[F](countryIndex)
+
+      localityIndex <- E.localityIndex
+      engineOpsLocality <- EngineOpsLocality[F](localityIndex)
+
+      metaIndex <- E.engineIndex[Meta](Meta.indexName, _ => id)
+      engineOpsMeta <- EngineOpsMeta[F](metaIndex)
+    }
+      yield new EngineOps[F](clusterName, engineOpsCountries, engineOpsLocality, engineOpsMeta)
 }

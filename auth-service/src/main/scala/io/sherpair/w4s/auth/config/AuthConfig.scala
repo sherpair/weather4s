@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets
 
 import scala.concurrent.duration.FiniteDuration
 
-import io.sherpair.w4s.config.{Configuration, Engine, Http, Service, Suggestions}
+import io.sherpair.w4s.config.{Configuration, Engine, Host, Service, Suggestions}
 import pureconfig.{ConfigReader, ConfigSource}
 // Needed.
 import pureconfig.generic.auto._
@@ -14,7 +14,7 @@ import pureconfig.module.enumeratum._
 case class AuthConfig(
   db: DB,
   engine: Engine,
-  httpAuth: Http,
+  hostAuth: Host,
   httpPoolSize: Int,
   service: Service,
   suggestions: Suggestions
