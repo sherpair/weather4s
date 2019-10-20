@@ -13,9 +13,9 @@ import io.sherpair.w4s.geo.config.GeoConfig
 
 class EngineOps[F[_]: Sync] (
     clusterName: String,
-    engineOpsCountries: EngineOpsCountries[F],
-    engineOpsLocality: EngineOpsLocality[F],
-    engineOpsMeta: EngineOpsMeta[F]
+    val engineOpsCountries: EngineOpsCountries[F],
+    val engineOpsLocality: EngineOpsLocality[F],
+    val engineOpsMeta: EngineOpsMeta[F]
   )(implicit E: Engine[F], L: Logger[F]) {
 
   def init: F[Cache] =

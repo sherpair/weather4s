@@ -13,7 +13,7 @@ import com.sksamuel.elastic4s.requests.common.RefreshPolicy
 import com.sksamuel.elastic4s.requests.get.GetRequest
 import com.sksamuel.elastic4s.requests.searches.sort.FieldSort
 import io.sherpair.w4s.config.{Engine => EngineConfig}
-import io.sherpair.w4s.domain.BulkError
+import io.sherpair.w4s.domain.{BulkError, BulkErrors}
 import io.sherpair.w4s.engine.EngineIndex
 
 class ElasticEngineIndex[F[_]: Async, T: ClassTag: AggReader: HitReader: Indexable] private[elastic] (
@@ -43,7 +43,7 @@ class ElasticEngineIndex[F[_]: Async, T: ClassTag: AggReader: HitReader: Indexab
     }
   }
 
-  override def saveAll(documents: List[T]): F[List[BulkError]] =
+  override def saveAll(documents: List[T]): F[BulkErrors] =
     elasticClient.execute(bulk {
       documents.map(document => (update(f(document)) in indexName).docAsUpsert(document))
     })
@@ -54,7 +54,7 @@ class ElasticEngineIndex[F[_]: Async, T: ClassTag: AggReader: HitReader: Indexab
       (update(f(document)) in indexName).docAsUpsert(document).refresh(RefreshPolicy.Immediate)
     ).lift.map(_.result.result)
 
-  private def bulkFailuresIfAny(failures: Seq[BulkResponseItem]): List[BulkError] =
+  private def bulkFailuresIfAny(failures: Seq[BulkResponseItem]): BulkErrors =
     failures.foldLeft(List[BulkError]())(
       (list, bri) => BulkError(bri.id, bri.error.map(_.reason).getOrElse("Generic Error")) :: list)
 }

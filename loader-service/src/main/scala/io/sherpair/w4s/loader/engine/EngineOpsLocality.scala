@@ -1,7 +1,7 @@
 package io.sherpair.w4s.loader.engine
 
 import cats.effect.Sync
-import io.sherpair.w4s.domain.{BulkError, Country, Localities, Locality}
+import io.sherpair.w4s.domain.{BulkErrors, Country, Localities, Locality}
 import io.sherpair.w4s.engine.LocalityIndex
 
 private[engine] class EngineOpsLocality[F[_]: Sync](localityIndex: LocalityIndex[F]) {
@@ -15,7 +15,7 @@ private[engine] class EngineOpsLocality[F[_]: Sync](localityIndex: LocalityIndex
   def find(country: Country, locality: Locality): F[Option[Locality]] =
     localityIndex.getById(country, locality.geoId)
 
-  def saveAll(country: Country, localities: Localities): F[List[BulkError]] =
+  def saveAll(country: Country, localities: Localities): F[BulkErrors] =
     localityIndex.saveAll(country, localities)
 }
 

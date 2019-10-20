@@ -2,8 +2,9 @@ package io.sherpair.w4s.geo.app
 
 import cats.data.Kleisli
 import cats.effect.{ConcurrentEffect, IO}
-import io.sherpair.w4s.domain.{Country, CountryCount, Logger}
-import io.sherpair.w4s.geo.{BaseSpec, ImplicitsIO}
+import io.sherpair.w4s.domain.{Country, CountryCount}
+import io.sherpair.w4s.engine.Engine
+import io.sherpair.w4s.geo.{GeoSpec, IOengine}
 import io.sherpair.w4s.geo.cache.CacheRef
 import io.sherpair.w4s.geo.engine.EngineOps
 import org.http4s.{EntityDecoder, Request, Response, Status}
@@ -12,26 +13,28 @@ import org.http4s.Uri.unsafeFromString
 import org.http4s.circe._
 import org.http4s.client.Client
 import org.http4s.implicits._
+import org.http4s.server.Router
 
-class CountryAppSpec extends BaseSpec {
+class CountryAppSpec extends GeoSpec {
 
   def withCountryAppRoutes(
-    resourcesF: IO[(CacheRef[IO], EngineOps[IO])], request: Request[IO]
-  )(implicit CE: ConcurrentEffect[IO], L: Logger[IO]): IO[Response[IO]] = {
+      request: Request[IO])(implicit CE: ConcurrentEffect[IO], E: Engine[IO]
+  ): IO[Response[IO]] = {
 
-    // For the time being... not used with the tests we have have at this time
+    // For the time being... not used with the tests we have at this time
     val client: Client[IO] = Client.fromHttpApp[IO](Kleisli.pure(Response[IO](Status.NoContent)))
 
     for {
-      resources <- resourcesF
-      cacheRef <- IO.pure(resources._1)
-      response <- new CountryApp[IO](cacheRef, client).routes.orNotFound.run(request)
+      implicit0(engineOps: EngineOps[IO]) <- EngineOps[IO](C.clusterName)
+      countriesCache <- engineOps.init
+      cacheRef <- CacheRef[IO](countriesCache)
+      response <- Router(("/geo", new CountryApp[IO](cacheRef, client).routes)).orNotFound.run(request)
     } yield response
   }
 
   "GET -> /geo/countries" should {
-    "return the number of total, available and not-available-yet countries" in new ImplicitsIO {
-      val responseIO = withCountryAppRoutes(withBaseResources, Request[IO](GET, uri"/geo/countries"))
+    "return the number of total, available and not-available-yet countries" in new IOengine {
+      val responseIO = withCountryAppRoutes(Request[IO](GET, uri"/geo/countries"))
 
       implicit val countryCountDecoder: EntityDecoder[IO, CountryCount] = jsonOf[IO, CountryCount]
 
@@ -47,13 +50,12 @@ class CountryAppSpec extends BaseSpec {
     }
   }
 
-  "GET -> /geo/country / {id}" should {
-    "return the requested country" in new ImplicitsIO {
+  "GET -> /geo/country/{id}" should {
+    "return the requested country" in new IOengine {
       val expectedCode = countryUnderTest.code
       val expectedName = countryUnderTest.name
 
-      val responseIO = withCountryAppRoutes(
-        withBaseResources, Request[IO](GET, unsafeFromString(s"/geo/country/${expectedCode}"))
+      val responseIO = withCountryAppRoutes(Request[IO](GET, unsafeFromString(s"/geo/country/${expectedCode}"))
       )
 
       implicit val countryDecoder: EntityDecoder[IO, Country] = jsonOf[IO, Country]
@@ -68,9 +70,9 @@ class CountryAppSpec extends BaseSpec {
     }
   }
 
-  "GET -> /geo/country / {id}" should {
-    "return \"NotFound\" if the request concerns an unknown country" in new ImplicitsIO {
-      val responseIO = withCountryAppRoutes(withBaseResources, Request[IO](GET, uri"/geo/country/unknown"))
+  "GET -> /geo/country/{id}" should {
+    "return \"NotFound\" if the request concerns an unknown country" in new IOengine {
+      val responseIO = withCountryAppRoutes(Request[IO](GET, uri"/geo/country/unknown"))
 
       val response = responseIO.unsafeRunSync
       response.status shouldBe Status.NotFound

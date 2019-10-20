@@ -1,6 +1,6 @@
 package io.sherpair.w4s.engine
 
-import io.sherpair.w4s.domain.BulkError
+import io.sherpair.w4s.domain.{BulkError, BulkErrors}
 
 trait EngineIndex[F[_], T] {
 
@@ -14,7 +14,7 @@ trait EngineIndex[F[_], T] {
    */
   def loadAll(sortBy: Option[Seq[String]] = None, windowSize: Int = EngineIndex.defaultWindowSize): F[List[T]]
 
-  def saveAll(documents: List[T]): F[List[BulkError]]
+  def saveAll(documents: List[T]): F[BulkErrors]
 
   def upsert(document: T): F[String]
 }

@@ -1,7 +1,9 @@
 package io.sherpair.w4s.engine
 
 import io.sherpair.w4s.config.{Suggestions => Parameters}
-import io.sherpair.w4s.domain.{BulkError, Country, Localities, Locality, Suggestions}
+import io.sherpair.w4s.domain.{
+  BulkErrors, Country, Localities, Locality, Suggestions
+}
 
 trait LocalityIndex[F[_]] {
 
@@ -12,7 +14,7 @@ trait LocalityIndex[F[_]] {
 
   def delete(country: Country): F[Unit]
 
-  def saveAll(country: Country, localities: Localities): F[List[BulkError]]
+  def saveAll(country: Country, localities: Localities): F[BulkErrors]
 
   def suggest(country: Country, localityTerm: String, parameters: Parameters): F[Suggestions]
 

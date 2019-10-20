@@ -11,12 +11,12 @@ object Dependencies {
     val enumeratum = "1.5.13"
     val enumeratumCirce = "1.5.22"
     val fs2 = "2.0.1"
-    val flyway = "6.0.6"
+    val flyway = "6.0.7"
     val elastic4s = "7.3.1"
     val http4s = "0.21.0-M5"
-    val log4cats = "1.0.0"
+    val log4cats = "1.0.1"
     val logback = "1.2.3"
-    val lucene4s = "1.9.1"
+    val lucene = "8.2.0"
     val postgres = "42.2.8"
     val pureconfig = "0.12.1"
     val scalatest = "3.0.8"
@@ -75,6 +75,7 @@ object Dependencies {
   )
 
   lazy val lucene = Seq(
-    "com.outr" %% "lucene4s" % version.lucene4s % "test"
+    "org.apache.lucene" % "lucene-core"    % version.lucene % "test",
+    "org.apache.lucene" % "lucene-suggest" % version.lucene % "test"
   )
 }

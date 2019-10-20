@@ -13,7 +13,7 @@ import cats.syntax.apply._
 import cats.syntax.either._
 import cats.syntax.flatMap._
 import fs2.text
-import io.sherpair.w4s.domain.{BulkError, Country, Locality, Logger, W4sError}
+import io.sherpair.w4s.domain.{BulkErrors, Country, Locality, Logger, W4sError}
 import io.sherpair.w4s.loader.config.LoaderConfig
 import io.sherpair.w4s.loader.domain.LoaderAccums
 import io.sherpair.w4s.loader.engine.EngineOps
@@ -44,7 +44,7 @@ class LoaderRun[F[_]: ContextShift](
     })
     .handleErrorWith(logDownloadError(_))
 
-  private def chunkToEngine(country: Country, localities: List[Locality]): F[(Int, List[BulkError])] =
+  private def chunkToEngine(country: Country, localities: List[Locality]): F[(Int, BulkErrors)] =
     engineOps.saveAllLocalities(country, localities) >>= {errors => (localities.size, errors).pure[F]}
 
   private def download(uri: String): F[Path] =

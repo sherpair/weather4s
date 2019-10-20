@@ -1,87 +1,75 @@
 package io.sherpair.w4s
 
 import scala.concurrent.ExecutionContext.global
-import scala.concurrent.duration._
 
-import cats.effect.{ContextShift, IO, Timer}
+import cats.effect.{Blocker, ContextShift, IO, Resource, Timer}
 import io.chrisdavenport.log4cats.noop.NoOpLogger
-import io.sherpair.w4s.config.{
-  Cluster, Configuration, Engine => EngineConfig, GlobalLock, HealthCheck, Host, Service, Suggestions
-}
-import io.sherpair.w4s.domain.{Country, Logger}
-import io.sherpair.w4s.domain.Analyzer.{english, stop}
-import io.sherpair.w4s.engine.{Engine, EngineIndex}
-import io.sherpair.w4s.engine.memory.MemoryEngine
-import io.sherpair.w4s.geo.cache.CacheRef
-import io.sherpair.w4s.geo.config.{GeoConfig, SSLGeo}
-import io.sherpair.w4s.geo.engine.EngineOps
-import org.scalatest.{Matchers, OptionValues, PrivateMethodTester, WordSpec}
+import io.circe.Decoder
+import io.circe.derivation.deriveDecoder
+import io.sherpair.w4s.domain.{noBulkErrors, BulkErrors, Country, Logger, Suggestion, Suggestions}
+import io.sherpair.w4s.domain.Analyzer.indonesian
+import io.sherpair.w4s.engine.Engine
+import io.sherpair.w4s.engine.memory.{DataSuggesters, MemoryEngine, MemoryLoader}
+import io.sherpair.w4s.geo.config.GeoConfig
+import org.http4s.EntityDecoder
+import org.http4s.circe.jsonOf
+import org.scalatest.{EitherValues, Matchers, OptionValues, PrivateMethodTester, WordSpec}
 
 package object geo {
 
-  abstract class BaseSpec
+  trait GeoSpec
     extends WordSpec
       with Matchers
+      with EitherValues
       with OptionValues
       with PrivateMethodTester {
 
-    val countryUnderTest = Country("zw", "Zimbabwe", english)
+    val countryUnderTest = Country("id", "Indonesia", indonesian)
 
-    val port = 8082
-    val host = Host("localhost", port)
-    val maxSuggestions = 10
-
-    implicit val configuration: GeoConfig = GeoConfig(
-      cacheHandlerInterval = 1 second,
-      EngineConfig(
-        Cluster("w4sCluster"),
-        EngineIndex.defaultWindowSize,
-        GlobalLock(3, 1 second, true),
-        HealthCheck(4, 1 second),
-        host
-      ),
-      host, host, host,
-      httpPoolSize = 2,
-      Service("Geo"),
-      SSLGeo(
-        "SunX509", host, "ssl/weather4s.p12", "w4s123456", "NativePRNGNonBlocking", "PKCS12"
-      ),
-      Suggestions(stop, 1, maxSuggestions)
-    )
-  }
-
-  trait ImplicitsIO {
-    implicit val cs: ContextShift[IO] = IO.contextShift(global)
+    implicit val C: GeoConfig = GeoConfig()
     implicit val timer: Timer[IO] = IO.timer(global)
     implicit val logger: Logger[IO] = NoOpLogger.impl[IO]
-    implicit val engine: Engine[IO] = MemoryEngine[IO]
-
-    def withBaseResources(implicit C: Configuration): IO[(CacheRef[IO], EngineOps[IO])] = {
-      for {
-        implicit0(engineOps: EngineOps[IO]) <- EngineOps[IO]("clusterName")
-        countriesCache <- engineOps.init
-
-        // The cache should already contain all known countries with the property "updated" always set to "epoch".
-        cacheRef <- CacheRef[IO](countriesCache)
-      }
-      yield (cacheRef -> engineOps)
-    }
   }
 
-  trait ImplicitsOpsIO {
+  trait DataSuggesterMap {
+
+    implicit val suggestionDecoder: Decoder[Suggestion] = deriveDecoder[Suggestion]
+    implicit val suggestionsDecoder: EntityDecoder[IO, Suggestions] = jsonOf
+
+    val countriesWithSuggestions = List("lu", "sg")  // Luxembourg and Singapore
+
+    val headCountry = countriesWithSuggestions.head
+    val tailCountry = countriesWithSuggestions.tail.head
+
+    val headTerm = "sch"
+    val tailTerm = "ter"
+
+    // scalastyle:off
+    val headTermUnicode = "m\u00fcn"  // "mün"
+    // scalastyle:on
+
+    val _dataSuggesterMap: Map[String, DataSuggesters] =
+      Blocker[IO]
+        .flatMap(blocker => Resource.liftF(IO(MemoryLoader(countriesWithSuggestions, blocker))))
+        .use(IO(_))
+        .unsafeRunSync
+  }
+
+  trait IOimplicits {
+    implicit val resultForSaveAll: BulkErrors = noBulkErrors
     implicit val cs: ContextShift[IO] = IO.contextShift(global)
-    implicit val timer: Timer[IO] = IO.timer(global)
-    implicit val logger: Logger[IO] = NoOpLogger.impl[IO]
-    implicit val engine: Engine[IO] = MemoryEngine[IO]
-
-    def engineOpsF(implicit C: Configuration): IO[EngineOps[IO]] =
-      EngineOps[IO]("clusterName")
   }
 
-//  trait ImplicitsSyncIO {
-//    implicit val logger: Logger[SyncIO] = NoOpLogger.impl[SyncIO]
-//    implicit val engine: Engine[SyncIO] = MemoryEngine[SyncIO]
-//
-//    val engineOpsF: SyncIO[EngineOps[SyncIO]] = EngineOps[SyncIO]("clusterName")
-//  }
+  trait IOengine extends IOimplicits {
+    implicit val engine: Engine[IO] =
+      MemoryEngine[IO](Map.empty[String, DataSuggesters]).unsafeRunSync
+  }
+
+  trait IOengineWithDataSuggesters extends IOimplicits {
+
+    def dataSuggesterMap: Map[String, DataSuggesters]
+
+    implicit val engine: Engine[IO] =
+      MemoryEngine[IO](dataSuggesterMap).unsafeRunSync
+  }
 }

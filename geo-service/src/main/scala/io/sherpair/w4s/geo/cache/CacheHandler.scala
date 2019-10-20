@@ -10,8 +10,8 @@ import cats.syntax.functor._
 import io.sherpair.w4s.domain.{epochAsLong, unit, Countries, Country, Logger, Meta}
 import io.sherpair.w4s.geo.engine.EngineOps
 
-class CacheHandler[F[_]: Sync: Timer] private (
-  cacheRef: CacheRef[F], engineOps: EngineOps[F], cacheHandlerInterval: FiniteDuration)(implicit L: Logger[F]
+class CacheHandler[F[_]: Sync: Timer] (
+    cacheRef: CacheRef[F], engineOps: EngineOps[F], cacheHandlerInterval: FiniteDuration)(implicit L: Logger[F]
 ) {
 
   def start: F[Unit] =
@@ -32,14 +32,14 @@ class CacheHandler[F[_]: Sync: Timer] private (
       cacheRenewal(meta).whenA(meta.lastEngineUpdate > lastCacheRenewal)
     }
 
-  private def cacheRenewal(meta: Meta): F[Unit] =
-    for {
-      countries <- engineOps.loadCountries
-      cacheHandlerStopFlag <- cacheRef.cacheHandlerStopFlag
-      _ <- cacheRef.cacheRenewal(Cache(meta.lastEngineUpdate, countries, cacheHandlerStopFlag))
-      _ <- meta.logLastEngineUpdate
-      _ <- logCountOfCountries(countries)
-    } yield unit
+    private def cacheRenewal(meta: Meta): F[Unit] =
+      for {
+        countries <- engineOps.loadCountries
+        cacheHandlerStopFlag <- cacheRef.cacheHandlerStopFlag
+        _ <- cacheRef.cacheRenewal(Cache(meta.lastEngineUpdate, countries, cacheHandlerStopFlag))
+        _ <- meta.logLastEngineUpdate
+        _ <- logCountOfCountries(countries)
+      } yield unit
 
   private def logCountOfCountries(countries: Countries): F[Unit] = {
     val size = countries.size
@@ -52,7 +52,7 @@ class CacheHandler[F[_]: Sync: Timer] private (
 object CacheHandler {
 
   def apply[F[_]: Concurrent: Timer](
-      cacheRef: CacheRef[F], engineOps: EngineOps[F], cacheHandlerInterval: FiniteDuration)(implicit L: Logger[F]
+    cacheRef: CacheRef[F], engineOps: EngineOps[F], cacheHandlerInterval: FiniteDuration)(implicit L: Logger[F]
   ): F[Fiber[F, Unit]] =
     Concurrent[F].start(new CacheHandler[F](cacheRef, engineOps, cacheHandlerInterval).start)
 }

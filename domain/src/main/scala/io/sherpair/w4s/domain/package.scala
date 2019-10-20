@@ -10,6 +10,7 @@ import io.circe.{Json, Printer}
 
 package object domain {
 
+  type BulkErrors = List[BulkError]
   type Countries = List[Country]
   type Localities = List[Locality]
   type Suggestions = List[Suggestion]
@@ -28,6 +29,8 @@ package object domain {
   val rightUnit = Right(unit)
 
   val unit: Unit = ()
+
+  val noBulkErrors = List.empty[BulkError]
 
   val now: Long = toMillis(LocalDateTime.now)
   val startOfTheDay: Long = toMillis(LocalDate.now.atStartOfDay)
