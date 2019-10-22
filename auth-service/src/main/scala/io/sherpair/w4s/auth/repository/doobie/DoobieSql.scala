@@ -19,7 +19,7 @@ private[doobie] trait DoobieSql[K, R <: Record[K]] {
 
   def loginSql(fieldId: String, fieldVal: String, password: String): Query0[R]
 
-  def subsetSql(order: String, limit: Int, offset: Int): Query0[R]
+  def subsetSql(order: String, limit: Long, offset: Long): Query0[R]
 
   def updateSql(record: R): ConnectionIO[Int]
 }

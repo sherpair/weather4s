@@ -2,7 +2,7 @@ package io.sherpair.w4s.geo.app
 
 import java.net.URLEncoder.encode
 
-import cats.effect.{ConcurrentEffect, IO}
+import cats.effect.{IO, Sync}
 import io.sherpair.w4s.domain.{now, Suggestions}
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.engine.memory.DataSuggesters
@@ -12,8 +12,8 @@ import io.sherpair.w4s.geo.engine.EngineOps
 import org.http4s.{Request, Response, Status}
 import org.http4s.Method.GET
 import org.http4s.Uri.unsafeFromString
-import org.http4s.implicits._
 import org.http4s.server.Router
+import org.http4s.syntax.kleisli._
 
 class SuggestAppSpec extends GeoSpec with DataSuggesterMap {
 
@@ -94,16 +94,13 @@ class SuggestAppSpec extends GeoSpec with DataSuggesterMap {
       cache.copy(now, countries, cache.cacheHandlerStopFlag)
     }
 
-  private def withSuggestAppRoutes(
-    request: Request[IO])(implicit CE: ConcurrentEffect[IO], E: Engine[IO]
-  ): IO[Response[IO]] = {
-
+  private def withSuggestAppRoutes(request: Request[IO])(implicit E: Engine[IO], S: Sync[IO]): IO[Response[IO]] =
     for {
       implicit0(engineOps: EngineOps[IO]) <- EngineOps[IO](C.clusterName)
       countryCache <- engineOps.init
       updatedCache <- cacheUpdate(countryCache)
       cacheRef <- CacheRef[IO](updatedCache)
       response <- Router(("/geo", new SuggestApp[IO](cacheRef, engineOps).routes)).orNotFound.run(request)
-    } yield response
-  }
+    }
+    yield response
 }

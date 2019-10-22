@@ -17,12 +17,12 @@ import io.sherpair.w4s.auth.repository.{Repository, RepositoryUserOps}
 import io.sherpair.w4s.domain.{Logger, W4sError}
 import org.flywaydb.core.Flyway
 
-class DoobieRepository[F[_]] private[doobie](
-    tx: Transactor[F])(implicit C: AuthConfig, L: Logger[F], S: Sync[F], T: Timer[F]
+class DoobieRepository[F[_]] (
+    transactor: Transactor[F])(implicit C: AuthConfig, L: Logger[F], S: Sync[F], T: Timer[F]
 ) extends Repository[F] {
 
   override def healthCheck(attempts: Int, interval: FiniteDuration): F[(Int, String)] =
-    FC.isValid(interval.toSeconds.toInt).transact(tx).ifM(
+    FC.isValid(interval.toSeconds.toInt).transact(transactor).ifM(
       S.delay((C.healthAttemptsDB - attempts + 1, "green")),
       if (attempts > 0) T.sleep(interval) *> healthCheck(attempts - 1, interval)
       else S.raiseError[(Int, String)](
@@ -30,24 +30,23 @@ class DoobieRepository[F[_]] private[doobie](
       )
     )
 
-  override val init: Resource[F, Unit] =
-    Resource.liftF(
-      initialHealthCheck >>
-        S.delay(Flyway.configure.dataSource(
-          C.db.url, C.db.user, new String(C.db.password, StandardCharsets.UTF_8)
-        ).load.migrate) >>= {
-          migrations => L.info(s"Applied ${migrations} database migrations")
-        }
-    )
+  override val init: F[Unit] = initialHealthCheck >> migrate
 
-  private def initialHealthCheck: F[Unit] =
+  private lazy val initialHealthCheck: F[Unit] =
     healthCheck(C.healthAttemptsDB, C.healthIntervalDB) >>= { result =>
       val HC = s"Health check successful after ${result._1} ${if (result._1 == 1) "attempt" else "attempts"}"
       L.info(s"${HC}\nStatus of DB connection is ${result._2}")
     }
 
-  override def userRepositoryOps: Resource[F, RepositoryUserOps[F]] =
-    Resource.liftF(DoobieRepositoryUserOps[F](tx))
+  private lazy val migrate: F[Unit] =
+    S.delay {
+      Flyway.configure.dataSource(C.db.url, C.db.user, new String(C.db.password, StandardCharsets.UTF_8))
+        .load.migrate
+    } >>= {
+      migrations => L.info(s"Applied ${migrations} database migrations")
+    }
+
+  override val userRepositoryOps: F[RepositoryUserOps[F]] = DoobieRepositoryUserOps[F](transactor)
 }
 
 object DoobieRepository {
@@ -57,7 +56,7 @@ object DoobieRepository {
       connectEC <- ExecutionContexts.fixedThreadPool(C.db.connectionPool)
       db = C.db
       blockerEC <- ExecutionContexts.cachedThreadPool
-      transactor <- HikariTransactor.newHikariTransactor[F](
+      transactor: HikariTransactor[F] <- HikariTransactor.newHikariTransactor[F](
         db.driver,
         db.url,
         db.user,

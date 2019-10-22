@@ -1,6 +1,6 @@
 package io.sherpair.w4s.geo.app
 
-import cats.effect.ConcurrentEffect
+import cats.effect.Sync
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import fs2.Stream
@@ -14,7 +14,7 @@ import org.http4s.{EntityEncoder, HttpRoutes}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 
-class SuggestApp[F[_]: ConcurrentEffect](
+class SuggestApp[F[_]: Sync](
   cacheRef: CacheRef[F], engineOps: EngineOps[F])(implicit C: GeoConfig) extends Http4sDsl[F] {
 
   implicit val suggestionEncoder: EntityEncoder[F, Suggestion] = jsonEncoderOf[F, Suggestion]

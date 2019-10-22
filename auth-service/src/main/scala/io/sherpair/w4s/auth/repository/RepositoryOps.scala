@@ -22,9 +22,9 @@ trait RepositoryOps[F[_], K, R <: Record[K]] {
 
   def list: ResultStream[K, R]
 
-  def subset(order: String, offset: Int, limit: Int): ResultList[F, K, R]
+  def subset(order: String, offset: Long, limit: Long): ResultList[F, K, R]
 
-  def subsetX(order: String, offset: Int, limit: Int): F[List[R]]
+  def subsetX(order: String, offset: Long, limit: Long): F[List[R]]
 
   def update(record: R): Result[F, Int]
 

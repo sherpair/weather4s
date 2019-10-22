@@ -19,26 +19,30 @@ object Dependencies {
     val lucene = "8.2.0"
     val postgres = "42.2.8"
     val pureconfig = "0.12.1"
+    val scalacheck = "1.14.2"
     val scalatest = "3.0.8"
+    val testcontainers = "0.33.0"
+    val testpostgres = "1.12.2"
   }
 
   lazy val base = Seq(
-    "org.typelevel" %% "cats-core" % version.cats,
-    "org.typelevel" %% "cats-kernel" % version.cats,
-    "org.typelevel" %% "cats-macros" % version.cats,
-    "org.typelevel" %% "cats-effect" % version.catsEffect,
-    "io.circe" %% "circe-core" % version.circe,
-    "io.circe" %% "circe-derivation" % version.circeDerivation,
-    "io.circe" %% "circe-jawn" % version.circe,
-    "io.circe" %% "circe-parser" % version.circe,
-    "com.beachape" %% "enumeratum" % version.enumeratum,
-    "com.beachape" %% "enumeratum-circe" % version.enumeratumCirce,
-    "io.chrisdavenport" %% "log4cats-slf4j" % version.log4cats,
-    "ch.qos.logback" % "logback-classic" % version.logback,
-    "com.github.pureconfig" %% "pureconfig" % version.pureconfig,
+    "org.typelevel"         %% "cats-core"             % version.cats,
+    "org.typelevel"         %% "cats-kernel"           % version.cats,
+    "org.typelevel"         %% "cats-macros"           % version.cats,
+    "org.typelevel"         %% "cats-effect"           % version.catsEffect,
+    "io.circe"              %% "circe-core"            % version.circe,
+    "io.circe"              %% "circe-derivation"      % version.circeDerivation,
+    "io.circe"              %% "circe-jawn"            % version.circe,
+    "io.circe"              %% "circe-parser"          % version.circe,
+    "com.beachape"          %% "enumeratum"            % version.enumeratum,
+    "com.beachape"          %% "enumeratum-circe"      % version.enumeratumCirce,
+    "io.chrisdavenport"     %% "log4cats-slf4j"        % version.log4cats,
+    "ch.qos.logback"        %  "logback-classic"       % version.logback,
+    "com.github.pureconfig" %% "pureconfig"            % version.pureconfig,
     "com.github.pureconfig" %% "pureconfig-enumeratum" % version.pureconfig,
-    "io.chrisdavenport" %% "log4cats-noop" % version.log4cats % "test",
-    "org.scalatest" %% "scalatest" % version.scalatest % "test"
+    "io.chrisdavenport"     %% "log4cats-noop"         % version.log4cats % "test",
+    "org.scalacheck"        %% "scalacheck"            % version.scalacheck % "test",
+    "org.scalatest"         %% "scalatest"             % version.scalatest % "test"
   )
 
   lazy val doobie = Seq(
@@ -48,8 +52,7 @@ object Dependencies {
     "org.tpolecat"   %% "doobie-hikari"    % version.doobie,
     "org.tpolecat"   %% "doobie-postgres"  % version.doobie,
 
-    "org.tpolecat"   %% "doobie-h2"        % version.doobie % "test",
-    "org.tpolecat"   %% "doobie-scalatest" % version.doobie % "test"
+    "org.tpolecat"   %% "doobie-scalatest" % version.doobie % "test,it"
   )
 
   lazy val elastic = Seq(
@@ -77,5 +80,9 @@ object Dependencies {
   lazy val lucene = Seq(
     "org.apache.lucene" % "lucene-core"    % version.lucene % "test",
     "org.apache.lucene" % "lucene-suggest" % version.lucene % "test"
+  )
+
+  lazy val testcontainers = Seq(
+    "com.dimafeng" %% "testcontainers-scala" % version.testcontainers % "it"
   )
 }

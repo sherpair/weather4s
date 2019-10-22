@@ -29,19 +29,21 @@ private[doobie] class UserSql[F[_]: Sync](implicit C: AuthConfig) extends Doobie
     """.query
 
   override def insertSql(user: User): ConnectionIO[User] = {
-    val stmt = sql"""
+    tryUpsert[(Long, Instant), User](
+      insertStmt(user).withUniqueGeneratedKeys[(Long, Instant)]("id", "created_at"),
+      user, "insert",
+      values => user.copy(id = values._1, createdAt = values._2)
+    )
+  }
+
+  def insertStmt(user: User): doobie.Update0 =
+    sql"""
       INSERT INTO users (account_id, first_name, last_name, email, password, geoId, country)
       VALUES (
         ${user.accountId}, ${user.firstName}, ${user.lastName},
         ${user.email}, crypt(${user.password}, gen_salt('bf', 8)), ${user.geoId}, ${user.country}
       )
-    """
-    tryUpsert[(Long, Instant), User](
-      stmt.update.withUniqueGeneratedKeys[(Long, Instant)]("id", "created_at"),
-      user, "insert",
-      values => user.copy(id = values._1, createdAt = values._2)
-    )
-  }
+    """.update
 
   override val listSql: Query0[User] = sql"""
       SELECT id, account_id, first_name, last_name, email, password, geoId, country, created_at
@@ -56,14 +58,17 @@ private[doobie] class UserSql[F[_]: Sync](implicit C: AuthConfig) extends Doobie
     )
     .query[User]
 
-  override def subsetSql(order: String, limit: Int, offset: Int): Query0[User] = sql"""
+  override def subsetSql(order: String, limit: Long, offset: Long): Query0[User] = sql"""
       SELECT id, account_id, first_name, last_name, email, password, geoId, country, created_at
       FROM users
       ORDER BY $order LIMIT $limit OFFSET $offset
     """.query
 
-  def updateSql(user: User): ConnectionIO[Int] = {
-    val stmt = sql"""
+  override def updateSql(user: User): ConnectionIO[Int] =
+    tryUpsert[Int, Int](updateStmt(user).run, user, "update", identity)
+
+  def updateStmt(user: User): Update0 =
+    sql"""
       UPDATE users SET
         account_id = ${user.accountId},
         first_name = ${user.firstName},
@@ -73,9 +78,7 @@ private[doobie] class UserSql[F[_]: Sync](implicit C: AuthConfig) extends Doobie
         geoId = ${user.geoId},
         country = ${user.country}
       WHERE id = ${user.id}
-    """
-    tryUpsert[Int, Int](stmt.update.run, user, "update", identity)
-  }
+    """.update
 
   private def error(method: String, user: User): W4sError =
     W4sError(s"(${method}) accountId(${user.accountId}) and/or email(${user.email}) already exist")

@@ -7,9 +7,11 @@ lazy val global = (project in file("."))
   .settings(commonSettings: _*)
   .aggregate(auth, geo, loader)
 
+lazy val IntegrationTest = config("it") extend(Test)
+
 lazy val auth = (project in file("auth-service"))
   .configs(IntegrationTest)
-  .dependsOn(domain % "compile -> compile; test -> test")
+  .dependsOn(domain % "compile -> compile; test -> test; it -> it")
   // .enablePlugins(GraalVMNativeImagePlugin)
   .enablePlugins(AshScriptPlugin, DockerPlugin, JavaAppPackaging)  // Alpine -> Ash Shell
   .settings(commonSettings: _*)
@@ -21,7 +23,7 @@ lazy val auth = (project in file("auth-service"))
     headerSettings(IntegrationTest),
     inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest)),
     parallelExecution in IntegrationTest := false,
-    libraryDependencies ++= doobie ++ fs2 ++ http4s
+    libraryDependencies ++= doobie ++ fs2 ++ http4s ++ testcontainers
   )
 
 lazy val domain = project

@@ -12,25 +12,11 @@ import org.http4s.Method.GET
 import org.http4s.Uri.unsafeFromString
 import org.http4s.circe._
 import org.http4s.client.Client
-import org.http4s.implicits._
 import org.http4s.server.Router
+import org.http4s.syntax.kleisli._
+import org.http4s.syntax.literals._
 
 class CountryAppSpec extends GeoSpec {
-
-  def withCountryAppRoutes(
-      request: Request[IO])(implicit CE: ConcurrentEffect[IO], E: Engine[IO]
-  ): IO[Response[IO]] = {
-
-    // For the time being... not used with the tests we have at this time
-    val client: Client[IO] = Client.fromHttpApp[IO](Kleisli.pure(Response[IO](Status.NoContent)))
-
-    for {
-      implicit0(engineOps: EngineOps[IO]) <- EngineOps[IO](C.clusterName)
-      countriesCache <- engineOps.init
-      cacheRef <- CacheRef[IO](countriesCache)
-      response <- Router(("/geo", new CountryApp[IO](cacheRef, client).routes)).orNotFound.run(request)
-    } yield response
-  }
 
   "GET -> /geo/countries" should {
     "return the number of total, available and not-available-yet countries" in new IOengine {
@@ -77,5 +63,20 @@ class CountryAppSpec extends GeoSpec {
       val response = responseIO.unsafeRunSync
       response.status shouldBe Status.NotFound
     }
+  }
+
+  def withCountryAppRoutes(
+    request: Request[IO])(implicit CE: ConcurrentEffect[IO], E: Engine[IO]
+  ): IO[Response[IO]] = {
+
+    // For the time being... not used with the tests we have at this time
+    val client: Client[IO] = Client.fromHttpApp[IO](Kleisli.pure(Response[IO](Status.NoContent)))
+
+    for {
+      implicit0(engineOps: EngineOps[IO]) <- EngineOps[IO](C.clusterName)
+      countriesCache <- engineOps.init
+      cacheRef <- CacheRef[IO](countriesCache)
+      response <- Router(("/geo", new CountryApp[IO](cacheRef, client).routes)).orNotFound.run(request)
+    } yield response
   }
 }

@@ -17,7 +17,7 @@ object Resources {
   ): CallGraphRes[F] =
     for {
       implicit0(repository: Repository[F]) <- reposR
-      _ <- repository.init
+      _ <- Resource.liftF(repository.init)
       routes <- Routes[F]
       server <- HttpServer[F](C.hostAuth, C.httpPoolSize, "/auth", routes)
     }

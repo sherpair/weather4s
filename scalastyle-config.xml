@@ -149,10 +149,6 @@ This file is divided into 2 sections:
     </parameters>
   </check>
 
-  <check level="warning" class="org.scalastyle.scalariform.MagicNumberChecker" enabled="true">
-    <parameters><parameter name="ignore">-1,0,1,2,3,4</parameter></parameters>
-  </check>
-
   <check level="warning" class="org.scalastyle.scalariform.NoFinalizeChecker" enabled="true"/>
 
   <check level="error" class="org.scalastyle.scalariform.NonASCIICharacterChecker" enabled="true"/>
@@ -235,6 +231,10 @@ This file is divided into 2 sections:
 
   <check level="warning" class="org.scalastyle.scalariform.IllegalImportsChecker" enabled="false">
     <parameters><parameter name="illegalImports"><![CDATA[sun._,java.awt._]]></parameter></parameters>
+  </check>
+
+  <check level="warning" class="org.scalastyle.scalariform.MagicNumberChecker" enabled="false">
+    <parameters><parameter name="ignore">-1,0,1,2,3,4</parameter></parameters>
   </check>
 
   <check level="warning" class="org.scalastyle.scalariform.MethodLengthChecker" enabled="false">

@@ -49,10 +49,10 @@ private[doobie] class DoobieRepositoryUserOps[F[_]](
   override def login(fieldId: String, fieldVal: String, password: String): F[Option[User]] =
     loginSql(fieldId, fieldVal, password).option.transact(tx)
 
-  override def subset(order: String, limit: Int, offset: Int): ResultList[F, Long, User] =
+  override def subset(order: String, limit: Long, offset: Long): ResultList[F, Long, User] =
     S.delay(subsetSql(order, offset, limit).stream.compile.toList)
 
-  override def subsetX(order: String, limit: Int, offset: Int): F[List[User]] =
+  override def subsetX(order: String, limit: Long, offset: Long): F[List[User]] =
     subsetSql(order, offset, limit).stream.compile.toList.transact(tx)
 
   override def update(record: User): Result[F, Int] =

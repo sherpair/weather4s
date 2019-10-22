@@ -11,10 +11,9 @@ object Routes {
 
   def apply[F[_]: CE](implicit C: AuthConfig, L: Logger[F], R: Repository[F]): Resource[F, Seq[HttpRoutes[F]]] =
     for {
-      implicit0(repositoryUserOps: RepositoryUserOps[F]) <- R.userRepositoryOps
+      implicit0(repositoryUserOps: RepositoryUserOps[F]) <- Resource.liftF(R.userRepositoryOps)
       routes <- Resource.liftF(
         Seq(
-          new AuthApp[F].routes,
           new Monitoring[F].routes,
           new UserApp[F].routes
         ).pure[F]

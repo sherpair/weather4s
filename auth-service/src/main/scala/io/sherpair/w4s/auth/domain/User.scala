@@ -20,6 +20,20 @@ extends Record[Long]
 
 object User {
 
+  def apply(
+      accountId: String, firstName: String, lastName: String,
+      email: String, password: String, geoId: String, country: String
+  ): User =
+    new User(
+      accountId = accountId,
+      firstName = firstName,
+      lastName = lastName,
+      email = email,
+      password = password,
+      geoId = geoId,
+      country = country
+    )
+
   implicit val decoder: Decoder[User] = deriveDecoder[User]
   implicit val encoder: Encoder[User] = deriveEncoder[User]
 }
