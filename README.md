@@ -1,60 +1,96 @@
-# Ascii Canvas
+Weather4S  [![Chat][gitter-badge]][gitter-link]
+=========
 
-A simple ASCII-based drawing program.
+![architecture](docs/Weather4s-Architecture.png)
 
-Users can :
-1. create a new canvas
-2. draw on the canvas using text based commands
-3. quit the program.
+---
 
-#### Commands
-| Example | Description |
-| --- | --- |
-|&nbsp;**C**&nbsp;&nbsp;&nbsp;{width}&nbsp;&nbsp;&nbsp;{height}&nbsp;| Create a new canvas of width x height. Note that width and height are always > 0. |
-|&nbsp;**L**&nbsp;&nbsp;&nbsp;{x1}&nbsp;{y1}&nbsp;&nbsp;&nbsp;{x2}&nbsp;{y2}&nbsp;| Draw a new line from coordinates (x1, y1) to (x2, y2) horizontally or vertically. |
-|&nbsp;**R**&nbsp;&nbsp;&nbsp;{x1}&nbsp;{y1}&nbsp;&nbsp;&nbsp;{x2}&nbsp;{y2}&nbsp;| Draw a new rectangle, with upper left corner at coordinate (x1,y1) and lower right coordinate at (x2, y2). |
-| **Q** | Quit the program. |
+[![Cats][cats-badge]][cats-link]
+
+### Objectives
+
+While still aiming to have a project that is of practical use, to some extent, **weather4s**'s usefulness for a hypothetical user is not particularly relevant.
+The ultimate goal is rather to implement a fully-fledged, professional-grade, and of course functioning, template/PoC
+- for exploring FP concepts in Scala
+- as well as a base from which to derive ideas, tricks and tips for future projects.
+
+### Requirements
+
+- JDK 8+
+- scala 2.13+
+- sbt 1.3+
+- docker 19+
 
 ### Build
 
 ```shell
-$ sbt clean compile
+$ sbt ";compile; docker:publishLocal" && docker system prune -f
 ```
 
-### Unit Tests
+### Tests
 
 ```shell
-$ sbt test
+$ sbt ";test; it:test"
+```
+Every microservice can still be independently tested:
+```
+$ sbt "project auth" ";test; it:test"
+$ sbt "project geo" ";test; it:test"
+$ sbt "project loader" ";test; it:test"
 ```
 
-### Running the programm
+## Running Weather4s
 
 ```shell
-$ sbt run
+$ ./bin/start-w4s-ssl.sh
+```
+and
+```shell
+$ ./bin/stop-w4s-ssl.sh
+```
+to stop the application.
+
+The Geo service can also just use http (at port 8082), instead of https, by starting Weather4s with:
+```shell
+$ ./bin/start-w4s.sh
+```
+In that case, it can be stopped running:
+```shell
+$ ./bin/stop-w4s.sh
 ```
 
-### Code Coverage
+#### Health checks (e.g. with HTTPie)
+```shell
+$ http :8081/auth/health
+$ http --verify no https://0.0.0.0:8443/geo/health
+$ http :8083/loader/health
+```
+
+#### Configuration
+
+All Weather4s' configuration properties can be found in one file, **bin/env-w4s**.
+
+#### Running a single microservice
 
 ```shell
-$ sbt jacoco
+$ ./bin/run-postgres.sh; sbt "project auth" run     # Auth requires Postgres
 ```
-
-### Source code style
-
-[Scalastyle](http://www.scalastyle.org/) is used to verify the code style.
-
-For IntelliJ users, the "**Scala style inspection**" checkbox has to be flagged (_Settings -> Editor -> Inspections -> Scala -> Code Style_)
-
-Code style can be verified while the compilation takes place or by running the command :
-
+or
 ```shell
-$ sbt scalastyle
+$ ./bin/run-elastic.sh;  sbt "project geo" run      # Geo requires ElasticSearch
 ```
+or
+```shell
+$ ./bin/run-elastic.sh;  sbt "project loader" run   # Loader requires ElasticSearch
+```
+Any running microservice can then be stopped with *Ctrl-C*, while the Postgres and the ElasticSearch
+containers respectively with "`docker stop w4sPostgres`" and "`docker stop w4sElastic`".
 
-### Source code formatting
+## REST Endpoints
 
-[Scalafmt](https://scalameta.org/scalafmt/) is used to format the code base.
+**TBD**
 
-For IntelliJ users, the [scalafmt plugin](https://plugins.jetbrains.com/plugin/8236-scalafmt) should be installed, Scalafmt as **Formatter** selected and the checkbox "**Reformat on file save**" flagged (_Settings -> Editor -> Code Style -> Scala).
-
-Code can be formatted by using the _alt+shift+L_ shortcut (Linux)
+[cats-badge]: https://typelevel.org/cats/img/cats-badge-tiny.png
+[cats-link]: https://typelevel.org/cats/
+[gitter-badge]: https://badges.gitter.im/Join%20Chat.svg
+[gitter-link]: https://gitter.im/sherpair/weather4s

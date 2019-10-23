@@ -1,6 +1,9 @@
 package io.sherpair.w4s.auth.app
 
+import cats.{FlatMap, Id}
 import cats.effect.IO
+import cats.syntax.apply._
+import cats.syntax.either._
 import cats.syntax.flatMap._
 import cats.syntax.option._
 import io.circe.Encoder
@@ -34,7 +37,7 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
           val (user, password) = withUserData
 
           R.emptyX >>
-            withUserAppRoutes(Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user)))
+            withUserAppRoutes(Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user.some)))
         }
       )
 
@@ -50,10 +53,10 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
           implicit val R: RepositoryUserOps[IO] = repositoryUserOps
 
           val (user0, password) = withUserData
-          val user1 = userGen.sample.map(_.copy(accountId = user0.get.accountId))
+          val user1 = genUser.copy(accountId = user0.accountId)
 
-          R.emptyX >> R.insertX(user0.get) >>
-            withUserAppRoutes(Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user1)))
+          R.emptyX >> R.insertX(user0) >>
+            withUserAppRoutes(Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user1.some)))
         }
       )
 
@@ -69,10 +72,10 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
           implicit val R: RepositoryUserOps[IO] = repositoryUserOps
 
           val (user0, password) = withUserData
-          val user1 = userGen.sample.map(_.copy(email = user0.get.email))
+          val user1 = genUser.copy(email = user0.email)
 
-          R.emptyX >> R.insertX(user0.get) >>
-            withUserAppRoutes(Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user1)))
+          R.emptyX >> R.insertX(user0) >>
+            withUserAppRoutes(Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user1.some)))
         }
       )
 
@@ -83,7 +86,7 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
 
   "GET -> /auth/user/{id}" should {
     "successfully return a user given an existing user-id" in  {
-      val expectedUser = userGen.sample.get
+      val expectedUser = genUser
 
       val responseIO = DoobieRepository[IO].use(
         _.userRepositoryOps >>= { repositoryUserOps =>
@@ -106,8 +109,7 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
 
   "POST -> /auth/user/accountId" should {
     "successfully login a user when existing accountId and password are provided" in  {
-      val (userO, password) = withUserData
-      val expectedUser = userO.get
+      val (expectedUser, password) = withUserData
 
       val responseIO = DoobieRepository[IO].use(
         _.userRepositoryOps >>= { repositoryUserOps =>
@@ -131,8 +133,7 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
 
   "POST -> /auth/user/email" should {
     "successfully login a user when existing email and password are provided" in  {
-      val (userO, password) = withUserData
-      val expectedUser = userO.get
+      val (expectedUser, password) = withUserData
 
       val responseIO = DoobieRepository[IO].use(
         _.userRepositoryOps >>= { repositoryUserOps =>
@@ -156,11 +157,10 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
 
   "PUT -> /auth/user/{id}" should {
     "successfully update an existing user" in  {
-      val (userO, password) = withUserData
-      val beforeUser = userO.get
+      val (beforeUser, _) = withUserData
       val afterUser = beforeUser.copy(
-        accountId = Gen.alphaStr.sample.get,
-        email = email("sherpair.io").sample.get
+        accountId = oneGen(Gen.alphaStr, "accountId"),
+        email = oneGen(email("sherpair.io"), "email@sherpair.io")
       )
 
       val (response, user) = DoobieRepository[IO].use(
@@ -173,7 +173,7 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
               Request[IO](PUT, unsafeFromString(s"/auth/user/${user.id}"))
                 .withEntity(UserBadge("ign", "ign".getBytes, afterUserWithId.some))
             ) >>= {
-              response => IO((response, R.findX(user.id).unsafeRunSync))
+              response => (IO(response), R.findX(user.id)).tupled
             }
           }
         }
@@ -189,15 +189,13 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
 
   "DELETE -> /auth/user/{id}" should {
     "successfully delete a user given an existing user-id" in  {
-      val user = userGen.sample.get
-
       val (responseDel, userO) = DoobieRepository[IO].use(
         _.userRepositoryOps >>= { repositoryUserOps =>
           implicit val R: RepositoryUserOps[IO] = repositoryUserOps
 
-          R.emptyX >> R.insertX(user) >>= { user =>
+          R.emptyX >> R.insertX(genUser) >>= { user =>
             withUserAppRoutes(Request[IO](DELETE, unsafeFromString(s"/auth/user/${user.id}"))) >>= {
-              response => IO((response, R.findX(user.id).unsafeRunSync))
+              response => (IO(response), R.findX(user.id)).tupled
             }
           }
         }
@@ -208,9 +206,21 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
     }
   }
 
-  private def withUserData: (Option[User], Array[Byte]) = {
-    val user = userGen.sample
-    (user, (user.fold("aPassword")(_.password)).getBytes("UTF-8"))
+  private val genUser: User = oneGen[User](userGen, userDefault)
+
+  private lazy val userDefault = User(
+    0, "accountId", "firstName", "lastName", "email@sherpair.io", "password", "12345678", "Benin"
+  )
+
+  /* Gen[T].sample might fail (and returning None) */
+  private def oneGen[T](gen: Gen[T], default: T): T =
+    FlatMap[Id].tailRecM[Int, T](100) { attempt =>
+      gen.sample.fold(if (attempt == 0) default.asRight[Int] else (attempt - 1).asLeft[T])(_.asRight[Int])
+    }
+
+  private def withUserData: (User, Array[Byte]) = {
+    val user = genUser
+    (user, user.password.getBytes("UTF-8"))
   }
 
   private def withUserAppRoutes(request: Request[IO])(implicit R: RepositoryUserOps[IO]): IO[Response[IO]] =
