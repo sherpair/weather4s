@@ -82,7 +82,7 @@ class SuggestAppSpec extends GeoSpec with DataSuggesterMap {
   }
 
   private def cacheUpdate(cache: Cache): IO[Cache] =
-    IO.pure {
+    IO.delay {
       val countries = cache.countries.map { country =>
         if (countriesWithSuggestions.contains(country.code)) {
           country.copy(

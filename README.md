@@ -12,7 +12,11 @@ Weather4S  [![Chat][gitter-badge]][gitter-link]
 While still aiming to have a project that is of practical use, to some extent, **weather4s**'s usefulness for a hypothetical user is not particularly relevant.
 The ultimate goal is rather to implement a fully-fledged, professional-grade, and of course functioning, template/PoC
 - for exploring FP concepts in Scala
-- as well as a base from which to derive ideas, tricks and tips for future projects.
+- as well as a base from which to get ideas and tips for future projects.
+
+As additional aim, the project also tries to be quite opinionated, in some way, in the sense that it should be using only libraries that fully embrace the
+FP philosophy - being the only exception so far **Lucene**, used anyhow just in a few unit tests to assess the behaviour of the suggester - as on the other hand to never
+make use of any library that could add any sort of "magic" to the codebase (no dependency injection then).
 
 ### Requirements
 
@@ -24,13 +28,13 @@ The ultimate goal is rather to implement a fully-fledged, professional-grade, an
 ### Build
 
 ```shell
-$ sbt ";compile; docker:publishLocal" && docker system prune -f
+$ sbt compile docker:publishLocal && docker system prune -f
 ```
 
 ### Tests
 
 ```shell
-$ sbt ";test; it:test"
+$ sbt test it:test
 ```
 Every microservice can still be independently tested:
 ```

@@ -2,7 +2,6 @@ package io.sherpair.w4s.loader.app
 
 import cats.effect.{Blocker, Concurrent, ContextShift, Fiber, Resource, Sync}
 import cats.effect.syntax.concurrent._
-import cats.syntax.applicative._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import fs2.concurrent.NoneTerminatedQueue
@@ -29,11 +28,11 @@ class Loader[F[_]: ContextShift: Sync](
     yield unit
 
   private def isValidUpsertCountryRequest(country: Country, maybeCountry: Option[Country]): F[Boolean] =
-    maybeCountry.fold(false) { mC =>
+    Sync[F].delay(maybeCountry.fold(false) { mC =>
       mC.updated != countryUnderLoadOrUpdate &&
       mC.updated < startOfTheDay &&
       mC.updated <= country.updated  // Unnecessary, still...
-    }.pure[F]
+    })
 }
 
 object Loader {

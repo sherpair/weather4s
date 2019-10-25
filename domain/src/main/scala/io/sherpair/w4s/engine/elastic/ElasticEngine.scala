@@ -4,8 +4,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
 
-import cats.effect.{Async, Resource, Timer}
-import cats.syntax.applicative._
+import cats.effect.{Async, Resource, Sync, Timer}
 import cats.syntax.apply._
 import cats.syntax.either._
 import cats.syntax.flatMap._
@@ -68,7 +67,7 @@ class ElasticEngine[F[_]: Timer] private[elastic] (
     A.tailRecM[Int, Boolean](lockAttempts) { lockAttempt =>
       for {
         response <- elasticClient.execute(acquireGlobalLock()).lift
-        result <- isGlobalLockAcquired(response.result, lockAttempt).pure[F]
+        result <- Sync[F].delay(isGlobalLockAcquired(response.result, lockAttempt))
       } yield result
     }
 
