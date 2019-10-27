@@ -6,7 +6,9 @@ import java.time.temporal.ChronoUnit.SECONDS
 
 import scala.concurrent.ExecutionContext.global
 
+import cats.{FlatMap, Id}
 import cats.effect.{Blocker, ContextShift, IO, Timer}
+import cats.syntax.either._
 import com.dimafeng.testcontainers.GenericContainer
 import doobie.scalatest.IOChecker
 import doobie.util.ExecutionContexts
@@ -17,9 +19,7 @@ import io.sherpair.w4s.auth.domain.User
 import io.sherpair.w4s.auth.repository.doobie.DoobieRepository
 import io.sherpair.w4s.domain.Logger
 import org.scalacheck.Gen
-import org.scalatest.{
-  BeforeAndAfterAll, EitherValues, Matchers, OptionValues, PrivateMethodTester, WordSpec
-}
+import org.scalatest.{BeforeAndAfterAll, EitherValues, Matchers, OptionValues, PrivateMethodTester, WordSpec}
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy
 
 package object auth {
@@ -96,7 +96,19 @@ package object auth {
       "Bulgaria", "Burkina Faso", "Burundi", "Cameroon", "Canada", "Cape Verde"
     )
 
-    lazy val userGen: Gen[User] = for {
+    private lazy val userDefault = User(
+      0, "accountId", "firstName", "lastName", "email@sherpair.io", "password", "12345678", "Benin"
+    )
+
+    def genUser: User = oneGen[User](userGen, userDefault)
+
+    /* Gen[T].sample might fail (and returning None) */
+    def oneGen[T](gen: Gen[T], default: T): T =
+      FlatMap[Id].tailRecM[Int, T](100) { attempt =>
+        gen.sample.fold(if (attempt == 0) default.asRight[Int] else (attempt - 1).asLeft[T])(_.asRight[Int])
+      }
+
+    def userGen: Gen[User] = for {
       accountId <- Gen.alphaStr
       firstName <- Gen.alphaStr
       lastName <- Gen.alphaStr
@@ -105,7 +117,7 @@ package object auth {
       geoId <- Gen.numStr
       country <- Gen.oneOf(countries)
     }
-    yield new User(0L, accountId, firstName, lastName, email, password, geoId, country)
+      yield new User(0L, accountId, firstName, lastName, email, password, geoId, country)
 
     def email(domain: String): Gen[String] = Gen.alphaStr.suchThat(_.nonEmpty).map(_ + s"@${domain}")
     def unicodeStr(len: Int): Gen[String] = for { cs <- Gen.listOfN(len, unicodeChar) } yield cs.mkString

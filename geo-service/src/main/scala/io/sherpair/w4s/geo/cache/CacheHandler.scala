@@ -7,8 +7,9 @@ import cats.syntax.applicative._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import io.sherpair.w4s.domain.{epochAsLong, unit, Countries, Country, Logger, Meta}
+import io.sherpair.w4s.domain.{epochAsLong, unit, Country, Logger, Meta}
 import io.sherpair.w4s.geo.engine.EngineOps
+import io.sherpair.w4s.types.Countries
 
 class CacheHandler[F[_]: Sync: Timer] (
     cacheRef: CacheRef[F], engineOps: EngineOps[F], cacheHandlerInterval: FiniteDuration)(implicit L: Logger[F]
@@ -44,8 +45,8 @@ class CacheHandler[F[_]: Sync: Timer] (
   private def logCountOfCountries(countries: Countries): F[Unit] = {
     val size = countries.size
     if (size < Country.numberOfCountries) L.error(Country.requirement)
-    val loadedFromUser = countries.count(_.updated > epochAsLong)
-    L.info(s"Countries(${size}):  uploaded(${loadedFromUser}),  not-uploaded-yet(${size - loadedFromUser})")
+    val available = countries.count(_.updated > epochAsLong)
+    L.info(s"Countries(${size}):  available(${available}),  not-available-yet(${size - available})")
   }
 }
 

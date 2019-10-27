@@ -15,6 +15,9 @@ import io.sherpair.w4s.domain.W4sError
 
 private[doobie] class UserSql[F[_]: Sync](implicit C: AuthConfig) extends DoobieSql[Long, User] {
 
+  /* Test-only */
+  override val countSql: Query0[Int] = sql"""SELECT COUNT(*) FROM users""".query
+
   override def deleteSql(id: Long): Update0 = sql"""DELETE FROM users WHERE id = $id""".update
 
   override def deleteSql(fieldId: String, fieldVal: String): Update0 =

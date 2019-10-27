@@ -2,16 +2,16 @@ import Dependencies._
 
 name := "weather4s"
 
+lazy val IntegrationTest = config("it") extend(Test)
+
 lazy val global = (project in file("."))
   .enablePlugins(GitBranchPrompt)
   .settings(commonSettings: _*)
   .aggregate(auth, geo, loader)
 
-lazy val IntegrationTest = config("it") extend(Test)
-
 lazy val auth = (project in file("auth-service"))
   .configs(IntegrationTest)
-  .dependsOn(domain % "compile -> compile; test -> test; it -> it")
+  .dependsOn(shared % "compile -> compile; test -> test; it -> it")
   // .enablePlugins(GraalVMNativeImagePlugin)
   .enablePlugins(AshScriptPlugin, DockerPlugin, JavaAppPackaging)  // Alpine -> Ash Shell
   .settings(commonSettings: _*)
@@ -23,18 +23,12 @@ lazy val auth = (project in file("auth-service"))
     headerSettings(IntegrationTest),
     inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest)),
     parallelExecution in IntegrationTest := false,
-    libraryDependencies ++= doobie ++ fs2 ++ http4s ++ testcontainers
-  )
-
-lazy val domain = project
-  .settings(commonSettings: _*)
-  .settings(
-    libraryDependencies ++= elastic ++ http4s ++ lucene
+    libraryDependencies ++= doobie ++ testcontainers
   )
 
 lazy val geo = (project in file("geo-service"))
   .configs(IntegrationTest)
-  .dependsOn(domain % "compile -> compile; test -> test")
+  .dependsOn(shared4e % "compile -> compile; test -> test")
   // .enablePlugins(GraalVMNativeImagePlugin)
   .enablePlugins(AshScriptPlugin, DockerPlugin, JavaAppPackaging)  // Alpine -> Ash Shell
   .settings(commonSettings: _*)
@@ -46,12 +40,12 @@ lazy val geo = (project in file("geo-service"))
     headerSettings(IntegrationTest),
     inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest)),
     parallelExecution in IntegrationTest := false,
-    libraryDependencies ++= fs2 ++ http4s ++ http4sClient
+    libraryDependencies ++= http4sClient
   )
 
 lazy val loader = (project in file("loader-service"))
   .configs(IntegrationTest)
-  .dependsOn(domain % "compile -> compile; test -> test")
+  .dependsOn(shared4e % "compile -> compile; test -> test")
   // .enablePlugins(GraalVMNativeImagePlugin)
   .enablePlugins(AshScriptPlugin, DockerPlugin, JavaAppPackaging)  // Alpine -> Ash Shell
   .settings(commonSettings: _*)
@@ -63,7 +57,17 @@ lazy val loader = (project in file("loader-service"))
     headerSettings(IntegrationTest),
     inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest)),
     parallelExecution in IntegrationTest := false,
-    libraryDependencies ++= fs2 ++ http4s ++ http4sClient
+    libraryDependencies ++= http4sClient
+  )
+
+lazy val shared = (project in file("shared"))
+  .settings(commonSettings: _*)
+
+lazy val shared4e = (project in file("shared-engine"))
+  .dependsOn(shared % "compile -> compile")
+  .settings(commonSettings: _*)
+  .settings(
+    libraryDependencies ++= elastic ++ lucene
   )
 
 lazy val commonSettings = Seq(
@@ -80,7 +84,7 @@ lazy val commonSettings = Seq(
   // coverageMinimum := 80,
   // coverageFailOnMinimum := true,
   // wartremoverErrors in (Compile, compile) ++= Warts.unsafe,
-  libraryDependencies ++= base,
+  libraryDependencies ++= base ++ fs2 ++ http4s,
   // trapExit := false,
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),

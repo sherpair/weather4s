@@ -12,6 +12,7 @@ import io.sherpair.w4s.auth.config.AuthConfig
 import io.sherpair.w4s.auth.domain.User
 import io.sherpair.w4s.auth.repository.RepositoryUserOps
 import io.sherpair.w4s.domain.{Logger, W4sError}
+import io.sherpair.w4s.http.{arrayOf, MT}
 import org.http4s.{EntityDecoder, EntityEncoder, HttpRoutes, Request, Response}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
@@ -30,7 +31,9 @@ class UserApp[F[_]: Sync](implicit C: AuthConfig, L: Logger[F], R: RepositoryUse
   implicit val userLoginDecoder: EntityDecoder[F, UserBadge] = jsonOf[F, UserBadge]
 
   def routes: HttpRoutes[F] = HttpRoutes.of[F] {
-    case GET -> Root / "user" / LongVar(key) => R.findX(key) >>= { userResponse(_, key.toString) }
+    case GET -> Root / "user" / LongVar(key) => R.find(key) >>= { userResponse(_, key.toString) }
+
+    case GET -> Root / "users" => Ok(arrayOf(R.list), MT)
 
     case request @ POST -> Root / "user" => insertRequest(request)
 
@@ -40,7 +43,7 @@ class UserApp[F[_]: Sync](implicit C: AuthConfig, L: Logger[F], R: RepositoryUse
     case request @ PUT -> Root / "user" / LongVar(key) => updateRequest(request, key)
 
     case DELETE -> Root / "user" / LongVar(key) =>
-      R.deleteX(key) >>= { updateResponse(_, key.toString) }
+      R.delete(key) >>= { updateResponse(_, key.toString) }
 
     case DELETE -> Root / "user" / "email" / key =>
       R.delete("email", key) >>= { updateResponse(_, key) }
@@ -52,7 +55,7 @@ class UserApp[F[_]: Sync](implicit C: AuthConfig, L: Logger[F], R: RepositoryUse
   private def insertRequest(request: Request[F]): F[Response[F]] =
     request.decode[UserBadge] { badge =>
       badge.user.fold(BadRequest()) { user =>
-        R.insertX(user.copy(password = new String(badge.bytes, StandardCharsets.UTF_8)))
+        R.insert(user.copy(password = new String(badge.bytes, StandardCharsets.UTF_8)))
           .flatMap(user => Created(user.id.asJson))
           .handleErrorWith {
             case W4sError(msg, _) => Conflict(msg)
@@ -71,7 +74,7 @@ class UserApp[F[_]: Sync](implicit C: AuthConfig, L: Logger[F], R: RepositoryUse
     request.decode[UserBadge] { badge =>
       badge.user.fold(BadRequest()) { user =>
           if (user.id != id) BadRequest()
-          else R.updateX(withPassword(user, badge.bytes))
+          else R.update(withPassword(user, badge.bytes))
             .flatMap(updateResponse(_, id.toString))
             .handleErrorWith {
               case W4sError(msg, _) => Conflict(msg)

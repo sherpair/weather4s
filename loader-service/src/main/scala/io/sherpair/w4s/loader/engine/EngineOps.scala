@@ -7,11 +7,12 @@ import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.option._
-import io.sherpair.w4s.domain.{now, unit, BulkErrors, Country, Localities, Locality, Logger, Meta}
+import io.sherpair.w4s.domain.{now, unit, BulkErrors, Country, Locality, Logger, Meta}
 import io.sherpair.w4s.domain.Country.countryUnderLoadOrUpdate
 import io.sherpair.w4s.domain.Meta.id
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.loader.domain.LoaderAccums
+import io.sherpair.w4s.types.Localities
 
 class EngineOps[F[_]: Sync] (
   clusterName: String,

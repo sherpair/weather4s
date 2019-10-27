@@ -6,6 +6,8 @@ import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManager}
 import scala.concurrent.ExecutionContext.global
 
 import cats.effect.{ConcurrentEffect => CE, ContextShift => CS, Fiber, Resource, Timer}
+import cats.syntax.applicative._
+import cats.syntax.flatMap._
 import cats.syntax.option._
 import io.sherpair.w4s.domain.Logger
 import io.sherpair.w4s.engine.Engine
@@ -32,12 +34,15 @@ object Resources {
       cacheHandlerFiber <- Resource.liftF(CacheHandler[F](cacheRef, engineOps, C.cacheHandlerInterval))
       client <- BlazeClientBuilder[F](global).resource
       routes <- Routes[F](cacheRef, client, engineOps)
-      sslData <- Resource.liftF(withSSLData(C.sslGeo))
-      server <- HttpServer[F](C.hostGeo, C.httpPoolSize, "/geo", routes, sslData.some)
+      sslData <- Resource.liftF(withHttps.ifM(withSSLData(C.sslGeo), none[SSLData].pure[F]))
+      server <- HttpServer[F](C.hostGeo, C.httpPoolSize, "/geo", routes, sslData)
     }
     yield (countriesCache, cacheHandlerFiber, server)
 
-  def withSSLData[F[_]: CE](sslGeo: SSLGeo): F[SSLData] =
+  private def withHttps[F[_]: CE]: F[Boolean] =
+    CE[F].delay(sys.env.get("W4S_GEO_PLAIN_HTTP").fold(true)(_.toLowerCase != "true"))
+
+  private def withSSLData[F[_]: CE](sslGeo: SSLGeo): F[Option[SSLData]] =
     Resource
       .fromAutoCloseable(CE[F].delay(getClass.getResourceAsStream(s"/${sslGeo.keyStore}")))
       .use { is =>
@@ -53,6 +58,6 @@ object Resources {
           SecureRandom.getInstance(sslGeo.randomAlgorithm)
         )
 
-        CE[F].delay(SSLData(sslGeo.host, sslContext))
+        CE[F].delay(SSLData(sslGeo.host, sslContext).some)
     }
 }

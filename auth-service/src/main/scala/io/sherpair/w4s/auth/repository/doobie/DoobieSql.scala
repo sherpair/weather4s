@@ -5,6 +5,9 @@ import io.sherpair.w4s.auth.domain.Record
 
 private[doobie] trait DoobieSql[K, R <: Record[K]] {
 
+  /* Test-only */
+  val countSql: Query0[Int]
+
   def deleteSql(id: K): Update0
 
   def deleteSql(fieldId: String, fieldVal: String): Update0

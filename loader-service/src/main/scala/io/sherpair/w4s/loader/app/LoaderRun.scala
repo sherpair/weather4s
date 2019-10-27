@@ -12,7 +12,7 @@ import cats.syntax.applicativeError._
 import cats.syntax.apply._
 import cats.syntax.either._
 import cats.syntax.flatMap._
-import fs2.text
+import fs2.text.{lines, utf8Decode}
 import io.sherpair.w4s.domain.{BulkErrors, Country, Locality, Logger, W4sError}
 import io.sherpair.w4s.loader.config.LoaderConfig
 import io.sherpair.w4s.loader.domain.LoaderAccums
@@ -73,8 +73,8 @@ class LoaderRun[F[_]: ContextShift](
 
   private def streamToEngine(is: InputStream): F[Option[LoaderAccums]] =
     fs2.io.readInputStream(is.pure[F], bufferSize, blocker, false)
-      .through(text.utf8Decode)
-      .through(text.lines)
+      .through(utf8Decode)
+      .through(lines)
       .filter(_.chars.filter(_ == '\t').count > minFieldsPerLine)
       .map(line => Locality(line.split("\t")))
       .chunkN(chunkSize, true)

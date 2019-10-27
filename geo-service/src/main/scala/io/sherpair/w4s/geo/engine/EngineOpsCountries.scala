@@ -6,11 +6,12 @@ import cats.effect.{Resource, Sync}
 import cats.syntax.applicative._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import io.sherpair.w4s.domain.{epochAsLong, BulkErrors, Countries, Country, Logger, W4sError}
+import io.sherpair.w4s.domain.{epochAsLong, BulkErrors, Country, Logger, W4sError}
 import io.sherpair.w4s.domain.Country.indexName
 import io.sherpair.w4s.engine.{Engine, EngineIndex}
 import io.sherpair.w4s.engine.EngineIndex.bulkErrorMessage
 import io.sherpair.w4s.geo.config.GeoConfig
+import io.sherpair.w4s.types.Countries
 
 private[engine] class EngineOpsCountries[F[_]](
     countryIndex: EngineIndex[F, Country])(implicit C: GeoConfig, E: Engine[F], L: Logger[F], S: Sync[F]

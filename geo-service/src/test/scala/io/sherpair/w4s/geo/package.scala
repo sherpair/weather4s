@@ -6,11 +6,12 @@ import cats.effect.{Blocker, ContextShift, IO, Resource, Timer}
 import io.chrisdavenport.log4cats.noop.NoOpLogger
 import io.circe.Decoder
 import io.circe.derivation.deriveDecoder
-import io.sherpair.w4s.domain.{noBulkErrors, BulkErrors, Country, Logger, Suggestion, Suggestions}
+import io.sherpair.w4s.domain.{noBulkErrors, BulkErrors, Country, Logger, Suggestion}
 import io.sherpair.w4s.domain.Analyzer.indonesian
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.engine.memory.{DataSuggesters, MemoryEngine, MemoryLoader}
 import io.sherpair.w4s.geo.config.GeoConfig
+import io.sherpair.w4s.types.Suggestions
 import org.http4s.EntityDecoder
 import org.http4s.circe.jsonOf
 import org.scalatest.{EitherValues, Matchers, OptionValues, PrivateMethodTester, WordSpec}

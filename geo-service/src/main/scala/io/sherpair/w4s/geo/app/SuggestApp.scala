@@ -6,10 +6,12 @@ import cats.syntax.functor._
 import fs2.Stream
 import io.circe.syntax.EncoderOps
 import io.sherpair.w4s.config.{Suggestions => Parameters}
-import io.sherpair.w4s.domain.{Analyzer => DefaultAnalyzer, Country, Suggestion, Suggestions}
+import io.sherpair.w4s.domain.{Analyzer => DefaultAnalyzer, Country, Suggestion}
 import io.sherpair.w4s.geo.cache.CacheRef
 import io.sherpair.w4s.geo.config.GeoConfig
 import io.sherpair.w4s.geo.engine.EngineOps
+import io.sherpair.w4s.http.MT
+import io.sherpair.w4s.types.Suggestions
 import org.http4s.{EntityEncoder, HttpRoutes}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl

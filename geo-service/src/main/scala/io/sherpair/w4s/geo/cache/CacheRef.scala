@@ -3,7 +3,8 @@ package io.sherpair.w4s.geo.cache
 import cats.effect.Sync
 import cats.effect.concurrent.Ref
 import cats.syntax.functor._
-import io.sherpair.w4s.domain._
+import io.sherpair.w4s.domain.{epochAsLong, leftUnit, rightUnit, Country, CountryCount}
+import io.sherpair.w4s.types.Countries
 
 case class Cache(
   lastCacheRenewal: Long, countries: Countries, cacheHandlerStopFlag: Either[Unit, Unit] = leftUnit

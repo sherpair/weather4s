@@ -1,8 +1,9 @@
 package io.sherpair.w4s.loader.engine
 
 import cats.effect.Sync
-import io.sherpair.w4s.domain.{BulkErrors, Country, Localities, Locality}
+import io.sherpair.w4s.domain.{BulkErrors, Country, Locality}
 import io.sherpair.w4s.engine.LocalityIndex
+import io.sherpair.w4s.types.Localities
 
 private[engine] class EngineOpsLocality[F[_]: Sync](localityIndex: LocalityIndex[F]) {
 

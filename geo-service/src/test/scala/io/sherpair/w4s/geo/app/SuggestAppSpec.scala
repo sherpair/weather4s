@@ -3,12 +3,13 @@ package io.sherpair.w4s.geo.app
 import java.net.URLEncoder.encode
 
 import cats.effect.{IO, Sync}
-import io.sherpair.w4s.domain.{now, Suggestions}
+import io.sherpair.w4s.domain.now
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.engine.memory.DataSuggesters
 import io.sherpair.w4s.geo.{DataSuggesterMap, GeoSpec, IOengineWithDataSuggesters}
 import io.sherpair.w4s.geo.cache.{Cache, CacheRef}
 import io.sherpair.w4s.geo.engine.EngineOps
+import io.sherpair.w4s.types.Suggestions
 import org.http4s.{Request, Response, Status}
 import org.http4s.Method.GET
 import org.http4s.Uri.unsafeFromString

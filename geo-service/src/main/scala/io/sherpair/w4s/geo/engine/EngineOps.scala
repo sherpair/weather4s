@@ -5,11 +5,12 @@ import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import io.sherpair.w4s.config.{Suggestions => Parameters}
-import io.sherpair.w4s.domain.{Countries, Country, Logger, Meta, Suggestions}
+import io.sherpair.w4s.domain.{Country, Logger, Meta}
 import io.sherpair.w4s.domain.Meta.id
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.geo.cache.Cache
 import io.sherpair.w4s.geo.config.GeoConfig
+import io.sherpair.w4s.types.{Countries, Suggestions}
 
 class EngineOps[F[_]: Sync] (
     clusterName: String,

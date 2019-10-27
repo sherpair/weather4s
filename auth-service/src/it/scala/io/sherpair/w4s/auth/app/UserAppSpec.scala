@@ -1,29 +1,27 @@
 package io.sherpair.w4s.auth.app
 
-import cats.{FlatMap, Id}
 import cats.effect.IO
 import cats.syntax.apply._
-import cats.syntax.either._
 import cats.syntax.flatMap._
 import cats.syntax.option._
 import io.circe.Encoder
 import io.circe.derivation.deriveEncoder
 import io.sherpair.w4s.auth.AuthSpec
-import io.sherpair.w4s.auth.domain.User
+import io.sherpair.w4s.auth.domain.{User, Users}
 import io.sherpair.w4s.auth.repository.RepositoryUserOps
 import io.sherpair.w4s.auth.repository.doobie.DoobieRepository
 import org.http4s.{EntityEncoder, Request, Response, Status}
-import org.http4s.Method.{DELETE, GET, POST, PUT}
 import org.http4s.Uri.unsafeFromString
 import org.http4s.circe._
 import org.http4s.circe.CirceEntityDecoder._
+import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
 import org.http4s.syntax.kleisli._
 import org.http4s.syntax.literals._
 import org.scalacheck.Gen
 import org.scalatest.BeforeAndAfter
 
-class UserAppSpec extends AuthSpec with BeforeAndAfter {
+class UserAppSpec extends AuthSpec with BeforeAndAfter with Http4sDsl[IO] {
 
   implicit val encoder: Encoder[UserBadge] = deriveEncoder[UserBadge]
   implicit val userEncoder: EntityEncoder[IO, UserBadge] = jsonEncoderOf[IO, UserBadge]
@@ -36,8 +34,10 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
 
           val (user, password) = withUserData
 
-          R.emptyX >>
-            withUserAppRoutes(Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user.some)))
+          R.empty >>
+            withUserAppRoutes(
+              Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user.some))
+            )
         }
       )
 
@@ -55,8 +55,9 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
           val (user0, password) = withUserData
           val user1 = genUser.copy(accountId = user0.accountId)
 
-          R.emptyX >> R.insertX(user0) >>
-            withUserAppRoutes(Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user1.some)))
+          R.empty >> R.insert(user0) >> withUserAppRoutes(
+            Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user1.some))
+          )
         }
       )
 
@@ -74,8 +75,9 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
           val (user0, password) = withUserData
           val user1 = genUser.copy(email = user0.email)
 
-          R.emptyX >> R.insertX(user0) >>
-            withUserAppRoutes(Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user1.some)))
+          R.empty >> R.insert(user0) >> withUserAppRoutes(
+            Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user1.some))
+          )
         }
       )
 
@@ -92,7 +94,7 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
         _.userRepositoryOps >>= { repositoryUserOps =>
           implicit val R: RepositoryUserOps[IO] = repositoryUserOps
 
-          R.emptyX >> R.insertX(expectedUser) >>= { user =>
+          R.empty >> R.insert(expectedUser) >>= { user =>
             withUserAppRoutes(Request[IO](GET, unsafeFromString(s"/auth/user/${user.id}")))
           }
         }
@@ -107,6 +109,32 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
     }
   }
 
+/* This test for some reason fails with RejectedExecutionException. It requires further investigation.
+ *
+  "GET -> /auth/users" should {
+    "successfully return a list of all existing users" in  {
+      val expectedUser = genUser
+
+      val responseIO = DoobieRepository[IO].use(
+        _.userRepositoryOps >>= { repositoryUserOps =>
+          implicit val R: RepositoryUserOps[IO] = repositoryUserOps
+
+          R.empty >> R.insert(expectedUser) >> R.insert(genUser) >> R.insert(genUser) >>
+            withUserAppRoutes(Request[IO](GET, uri"/auth/users"))
+        }
+      )
+
+      val response = responseIO.unsafeRunSync
+      response.status shouldBe Status.Ok
+
+* THE TEST FAILS HERE
+      val users = response.as[Users].unsafeRunSync
+      users.size shouldBe 3
+      users.find(_.accountId == expectedUser.accountId) shouldBe expectedUser
+    }
+  }
+*/
+
   "POST -> /auth/user/accountId" should {
     "successfully login a user when existing accountId and password are provided" in  {
       val (expectedUser, password) = withUserData
@@ -115,7 +143,7 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
         _.userRepositoryOps >>= { repositoryUserOps =>
           implicit val R: RepositoryUserOps[IO] = repositoryUserOps
 
-          R.emptyX >> R.insertX(expectedUser) >>= { user =>
+          R.empty >> R.insert(expectedUser) >>= { user =>
             withUserAppRoutes(Request[IO](POST, uri"/auth/user/accountId")
               .withEntity(UserBadge(user.accountId, password, None)))
           }
@@ -139,7 +167,7 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
         _.userRepositoryOps >>= { repositoryUserOps =>
           implicit val R: RepositoryUserOps[IO] = repositoryUserOps
 
-          R.emptyX >> R.insertX(expectedUser) >>= { user =>
+          R.empty >> R.insert(expectedUser) >>= { user =>
             withUserAppRoutes(Request[IO](POST, uri"/auth/user/email")
               .withEntity(UserBadge(user.email, password, None)))
           }
@@ -167,13 +195,13 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
         _.userRepositoryOps >>= { repositoryUserOps =>
           implicit val R: RepositoryUserOps[IO] = repositoryUserOps
 
-          R.emptyX >> R.insertX(beforeUser) >>= { user =>
+          R.empty >> R.insert(beforeUser) >>= { user =>
             val afterUserWithId = afterUser.copy(id = user.id)
             withUserAppRoutes(
               Request[IO](PUT, unsafeFromString(s"/auth/user/${user.id}"))
                 .withEntity(UserBadge("ign", "ign".getBytes, afterUserWithId.some))
             ) >>= {
-              response => (IO(response), R.findX(user.id)).tupled
+              response => (IO(response), R.find(user.id)).tupled
             }
           }
         }
@@ -193,9 +221,9 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
         _.userRepositoryOps >>= { repositoryUserOps =>
           implicit val R: RepositoryUserOps[IO] = repositoryUserOps
 
-          R.emptyX >> R.insertX(genUser) >>= { user =>
+          R.empty >> R.insert(genUser) >>= { user =>
             withUserAppRoutes(Request[IO](DELETE, unsafeFromString(s"/auth/user/${user.id}"))) >>= {
-              response => (IO(response), R.findX(user.id)).tupled
+              response => (IO(response), R.find(user.id)).tupled
             }
           }
         }
@@ -205,18 +233,6 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter {
       userO shouldBe None
     }
   }
-
-  private val genUser: User = oneGen[User](userGen, userDefault)
-
-  private lazy val userDefault = User(
-    0, "accountId", "firstName", "lastName", "email@sherpair.io", "password", "12345678", "Benin"
-  )
-
-  /* Gen[T].sample might fail (and returning None) */
-  private def oneGen[T](gen: Gen[T], default: T): T =
-    FlatMap[Id].tailRecM[Int, T](100) { attempt =>
-      gen.sample.fold(if (attempt == 0) default.asRight[Int] else (attempt - 1).asLeft[T])(_.asRight[Int])
-    }
 
   private def withUserData: (User, Array[Byte]) = {
     val user = genUser

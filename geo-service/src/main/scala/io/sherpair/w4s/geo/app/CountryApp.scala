@@ -6,10 +6,12 @@ import cats.syntax.functor._
 import fs2.Stream
 import io.circe.Json
 import io.circe.syntax.EncoderOps
-import io.sherpair.w4s.domain.{Countries, Country, CountryCount, Logger}
+import io.sherpair.w4s.domain.{Country, CountryCount, Logger}
 import io.sherpair.w4s.geo.cache.CacheRef
 import io.sherpair.w4s.geo.config.GeoConfig
 import io.sherpair.w4s.geo.http.Loader
+import io.sherpair.w4s.http.MT
+import io.sherpair.w4s.types.Countries
 import org.http4s.{EntityEncoder, HttpRoutes, Response}
 import org.http4s.circe._
 import org.http4s.client.Client

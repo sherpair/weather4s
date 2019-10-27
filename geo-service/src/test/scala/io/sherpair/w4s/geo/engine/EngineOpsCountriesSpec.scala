@@ -6,8 +6,8 @@ import cats.effect.{ContextShift, IO}
 import io.sherpair.w4s.domain.{unit, BulkError, BulkErrors, Country, W4sError}
 import io.sherpair.w4s.domain.Analyzer.brazilian
 import io.sherpair.w4s.domain.Country.indexName
-import io.sherpair.w4s.engine.{memory, Engine, EngineIndex}
-import io.sherpair.w4s.engine.memory.MemoryEngine
+import io.sherpair.w4s.engine.{Engine, EngineIndex}
+import io.sherpair.w4s.engine.memory.{DataSuggesters, MemoryEngine}
 import io.sherpair.w4s.geo.{GeoSpec, IOengine}
 
 class EngineOpsCountriesSpec extends GeoSpec {
@@ -80,7 +80,7 @@ class EngineOpsCountriesSpec extends GeoSpec {
         implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
         implicit val engine: Engine[IO] =
-          MemoryEngine[IO](Map.empty[String, memory.DataSuggesters]).unsafeRunSync
+          MemoryEngine[IO](Map.empty[String, DataSuggesters]).unsafeRunSync
 
         val exc = intercept[W4sError] {
           (for {

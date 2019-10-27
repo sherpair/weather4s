@@ -4,20 +4,16 @@ import java.nio.charset.StandardCharsets
 
 import scala.concurrent.duration.FiniteDuration
 
-import io.sherpair.w4s.config.{Configuration, Engine, Host, Service, Suggestions}
+import io.sherpair.w4s.config.{Configuration, Host, Service}
 import pureconfig.{ConfigReader, ConfigSource}
 // Needed.
 import pureconfig.generic.auto._
-// Needed.
-import pureconfig.module.enumeratum._
 
 case class AuthConfig(
   db: DB,
-  engine: Engine,
   hostAuth: Host,
   httpPoolSize: Int,
-  service: Service,
-  suggestions: Suggestions
+  service: Service
 ) extends Configuration {
 
   val healthAttemptsDB: Int = db.healthCheck.attempts
