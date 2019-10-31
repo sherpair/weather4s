@@ -14,9 +14,37 @@ The ultimate goal is rather to implement a fully-fledged, professional-grade, an
 - for exploring FP concepts in Scala
 - as well as a base from which to get ideas and tips for future projects.
 
-As additional aim, the project also tries to be quite opinionated, in some way, in the sense that it should be using only libraries that fully embrace the
-FP philosophy - being the only exception so far **Lucene**, used anyhow just in a few unit tests to assess the behaviour of the suggester - as on the other hand to never
-make use of any library that could add any sort of "magic" to the codebase (no dependency injection then).
+The project also pretends to be opinionated, in some way, as it should
+- use only libraries that fully embrace the FP philosophy, being the only exception so far **Lucene**, used anyhow just in a few unit tests to assess the behaviour of the
+  suggester
+- and never make use of any library that could add any sort of "magic" to the codebase (no dependency injection, for instance).
+
+### Microservices
+
+- **Loader**. Operates only upon a user request, sent via **Geo**. An architectural choice was to feed ElasticSearch with localities only when the user expressly asks
+  to make a specific country available for weather queries. When this happens and as long as the country's localities are not already present in the engine, the service
+  downloads the related CSV file from [geonames](http://download.geonames.org/export/dump/), transforms it and adds all resulting localities to the engine in a new
+  "country" engine index.
+
+  Only if the process is successful the **countries** engine index gets updated, with the document of the "new" country set as *available*. **Geo** is notified that one
+  country is now available only after the **Loader** updates the **meta** engine index, which acts as a trigger (ElasticSearch doesn't provide a "transaction-like" mechanism),
+  and anyhow only at the next iteration of the "CacheHandler" in **Geo** which, after noticed the **meta** document was updated, makes the country as a last step visible
+  to the user.
+
+- **Geo**. Aside from the user authentication, handled by **Auth**, **Geo** is the main backend interface for the frontend to which it provides the list of available and
+  non-available countries, as well as a list of suggested locations while the user types the name of the place she is looking the weather info for.
+
+  It is also responsible for the initialization of the engine, in which it persists, at the first launch of Weather4s, the list of all countries in the world, marked as
+  *not-available-yet*, as well as the **meta** document (in a specific engine index).
+
+- **Auth** (*In the works now!*). As expected, **Auth** handles all aspects of user management. From registration via email activation to authentication, to the
+  management of the profile, used by **Geo** to show the weather of the landing locality, chosen by the user during the registration, after he logs in.
+
+### Frontend
+
+**TBD** ... in truth, I already have a working prototype, but it's in Typescript/React. I won't use that, then. Plan is to only use FP Scala, accordingly
+the last step will be to write the frontend using Scala.js. Still, it should more or less draws on the same ideas, style and functionalities of the former implementation,
+as shown in [this screenshot](docs/screenshot.png), with the addition of a user login/registration page.
 
 ### Requirements
 
