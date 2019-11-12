@@ -1,5 +1,7 @@
 .*
 
+bin/env-w4s.secrets
+
 !.scalafix.conf
 !.scalafmt.conf
 !.gitignore

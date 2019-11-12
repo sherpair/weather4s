@@ -1,6 +1,6 @@
 package io.sherpair.w4s.loader.config
 
-import io.sherpair.w4s.config.{Config4e, Engine, Host, Service, Suggestions}
+import io.sherpair.w4s.config.{AuthToken, Config4e, Engine, Host, Service, SSLData, Suggestions}
 import pureconfig.ConfigSource
 // Needed.
 import pureconfig.generic.auto._
@@ -8,12 +8,15 @@ import pureconfig.generic.auto._
 import pureconfig.module.enumeratum._
 
 case class LoaderConfig(
+  authToken: AuthToken,
   countryDownloadUrl: String,
   engine: Engine,
-  hostLoader: Host,
+  host: Host,
   httpPoolSize: Int,
   maxEnqueuedCountries: Int,
+  root: String,
   service: Service,
+  sslData: SSLData,
   suggestions: Suggestions
 ) extends Config4e
 

@@ -8,7 +8,7 @@ case class DB(
   healthCheck: HealthCheck,
   host: Host,
   name: String,
-  password: Array[Byte],
+  secret: Array[Byte],
   user: String
 ) {
 

@@ -1,7 +1,9 @@
 package io.sherpair.w4s.http
 
+import javax.net.ssl.SSLContext
+
 import cats.effect.{Concurrent, ConcurrentEffect, ContextShift, Resource, Timer}
-import io.sherpair.w4s.config.Host
+import io.sherpair.w4s.config.Configuration
 import org.http4s.{HttpApp, HttpRoutes}
 import org.http4s.server.{Router, Server}
 import org.http4s.server.blaze.BlazeServerBuilder
@@ -11,22 +13,18 @@ import org.http4s.syntax.kleisli._
 object HttpServer {
 
   def apply[F[_]: ConcurrentEffect: ContextShift: Timer](
-      host: Host, httpPoolSize: Int, root: String, routes: Seq[HttpRoutes[F]], sslDataO: Option[SSLData] = None
+      routes: Seq[HttpRoutes[F]], sslContextO: Option[SSLContext] = None)(implicit C: Configuration
   ): Resource[F, Server[F]] = {
 
-    val blazeBuilder: BlazeServerBuilder[F] = sslDataO.fold {
-      BlazeServerBuilder[F].
-        bindHttp(host.port, host.address)
-    } { sslData =>
-      BlazeServerBuilder[F]
-        .bindHttp(sslData.host.port, sslData.host.address)
-        .enableHttp2(true)
-        .withSSLContext(sslData.context)
+    val blazeBuilder: BlazeServerBuilder[F] = sslContextO.fold {
+      BlazeServerBuilder[F].bindHttp(C.host.port, C.host.address)
+    } { sslContext =>
+      BlazeServerBuilder[F].bindHttp(C.host.port, C.host.address).withSSLContext(sslContext).enableHttp2(true)
     }
 
     blazeBuilder
-      .withConnectorPoolSize(httpPoolSize)
-      .withHttpApp(withMiddleware[F](root, routes))
+      .withConnectorPoolSize(C.httpPoolSize)
+      .withHttpApp(withMiddleware[F](C.root, routes))
       .resource
   }
 

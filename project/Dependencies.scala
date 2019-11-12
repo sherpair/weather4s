@@ -5,15 +5,17 @@ object Dependencies {
   object version {
     val cats = "2.0.0"
     val catsEffect = "2.0.0"
-    val circe = "0.12.2"
+    val circe = "0.12.3"
     val circeDerivation = "0.12.0-M7"
     val doobie = "0.8.4"
     val enumeratum = "1.5.13"
     val enumeratumCirce = "1.5.22"
-    val fs2 = "2.0.1"
-    val flyway = "6.0.7"
+    val fs2 = "2.1.0"
+    val flyway = "6.0.8"
     val elastic4s = "7.3.1"
     val http4s = "0.21.0-M5"
+    val javamail = "1.6.4"
+    val jwt = "4.2.0"
     val log4cats = "1.0.1"
     val logback = "1.2.3"
     val lucene = "8.2.0"
@@ -23,6 +25,7 @@ object Dependencies {
     val scalatest = "3.0.8"
     val testcontainers = "0.33.0"
     val testpostgres = "1.12.2"
+    val tsec = "0.2.0-M2"
   }
 
   lazy val base = Seq(
@@ -77,6 +80,14 @@ object Dependencies {
     "org.http4s" %% "http4s-blaze-client" % version.http4s
   )
 
+  lazy val javamail = Seq(
+    "com.sun.mail" % "jakarta.mail" % version.javamail
+  )
+
+  lazy val jwt = Seq(
+    "com.pauldijou" %% "jwt-core" % version.jwt
+  )
+
   lazy val lucene = Seq(
     "org.apache.lucene" % "lucene-core"    % version.lucene % "test",
     "org.apache.lucene" % "lucene-suggest" % version.lucene % "test"
@@ -84,5 +95,10 @@ object Dependencies {
 
   lazy val testcontainers = Seq(
     "com.dimafeng" %% "testcontainers-scala" % version.testcontainers % "it"
+  )
+
+  lazy val tsec = Seq(
+    "io.github.jmcardon" %% "tsec-common"      % version.tsec,
+    "io.github.jmcardon" %% "tsec-password"    % version.tsec
   )
 }

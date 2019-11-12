@@ -32,11 +32,11 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter with Http4sDsl[IO] {
         _.userRepositoryOps >>= { repositoryUserOps =>
           implicit val R: RepositoryUserOps[IO] = repositoryUserOps
 
-          val (user, password) = withUserData
+          val (user, secret) = withUserData
 
           R.empty >>
             withUserAppRoutes(
-              Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user.some))
+              Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", secret, user.some))
             )
         }
       )
@@ -52,11 +52,11 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter with Http4sDsl[IO] {
         _.userRepositoryOps >>= { repositoryUserOps =>
           implicit val R: RepositoryUserOps[IO] = repositoryUserOps
 
-          val (user0, password) = withUserData
+          val (user0, secret) = withUserData
           val user1 = genUser.copy(accountId = user0.accountId)
 
           R.empty >> R.insert(user0) >> withUserAppRoutes(
-            Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user1.some))
+            Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", secret, user1.some))
           )
         }
       )
@@ -72,11 +72,11 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter with Http4sDsl[IO] {
         _.userRepositoryOps >>= { repositoryUserOps =>
           implicit val R: RepositoryUserOps[IO] = repositoryUserOps
 
-          val (user0, password) = withUserData
+          val (user0, secret) = withUserData
           val user1 = genUser.copy(email = user0.email)
 
           R.empty >> R.insert(user0) >> withUserAppRoutes(
-            Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", password, user1.some))
+            Request[IO](POST, uri"/auth/user").withEntity(UserBadge("ign", secret, user1.some))
           )
         }
       )
@@ -136,8 +136,8 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter with Http4sDsl[IO] {
 */
 
   "POST -> /auth/user/accountId" should {
-    "successfully login a user when existing accountId and password are provided" in  {
-      val (expectedUser, password) = withUserData
+    "successfully login a user when existing accountId and secret are provided" in  {
+      val (expectedUser, secret) = withUserData
 
       val responseIO = DoobieRepository[IO].use(
         _.userRepositoryOps >>= { repositoryUserOps =>
@@ -145,7 +145,7 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter with Http4sDsl[IO] {
 
           R.empty >> R.insert(expectedUser) >>= { user =>
             withUserAppRoutes(Request[IO](POST, uri"/auth/user/accountId")
-              .withEntity(UserBadge(user.accountId, password, None)))
+              .withEntity(UserBadge(user.accountId, secret, None)))
           }
         }
       )
@@ -160,8 +160,8 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter with Http4sDsl[IO] {
   }
 
   "POST -> /auth/user/email" should {
-    "successfully login a user when existing email and password are provided" in  {
-      val (expectedUser, password) = withUserData
+    "successfully login a user when existing email and secret are provided" in  {
+      val (expectedUser, secret) = withUserData
 
       val responseIO = DoobieRepository[IO].use(
         _.userRepositoryOps >>= { repositoryUserOps =>
@@ -169,7 +169,7 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter with Http4sDsl[IO] {
 
           R.empty >> R.insert(expectedUser) >>= { user =>
             withUserAppRoutes(Request[IO](POST, uri"/auth/user/email")
-              .withEntity(UserBadge(user.email, password, None)))
+              .withEntity(UserBadge(user.email, secret, None)))
           }
         }
       )
@@ -236,7 +236,7 @@ class UserAppSpec extends AuthSpec with BeforeAndAfter with Http4sDsl[IO] {
 
   private def withUserData: (User, Array[Byte]) = {
     val user = genUser
-    (user, user.password.getBytes("UTF-8"))
+    (user, user.secret.getBytes("UTF-8"))
   }
 
   private def withUserAppRoutes(request: Request[IO])(implicit R: RepositoryUserOps[IO]): IO[Response[IO]] =

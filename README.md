@@ -27,24 +27,24 @@ The project also pretends to be opinionated, in some way, as it should
   "country" engine index.
 
   Only if the process is successful the **countries** engine index gets updated, with the document of the "new" country set as *available*. **Geo** is notified that one
-  country is now available only after the **Loader** updates the **meta** engine index, which acts as a trigger (ElasticSearch doesn't provide a "transaction-like" mechanism),
-  and anyhow only at the next iteration of the "CacheHandler" in **Geo** which, after noticed the **meta** document was updated, makes the country as a last step visible
-  to the user.
+  country is now available only after **Loader** updates the **meta** engine index, which acts as a trigger (ElasticSearch doesn't provide a "transaction-like" mechanism),
+  and anyhow only at the next iteration of the "CacheHandler" in **Geo** which, after noticed the **meta** document was updated, makes the country visible to the user as
+  a last step .
 
-- **Geo**. Aside from the user authentication, handled by **Auth**, **Geo** is the main backend interface for the frontend to which it provides the list of available and
-  non-available countries, as well as a list of suggested locations while the user types the name of the place she is looking the weather info for.
+- **Geo**. Aside from user authentication, handled by **Auth**, **Geo** is the main backend interface for the frontend to which it provides the list of available and
+  non-available-yet countries, as well as the list of suggestions while the user types the name of the locality she is looking the weather info for.
 
   It is also responsible for the initialization of the engine, in which it persists, at the first launch of Weather4s, the list of all countries in the world, marked as
   *not-available-yet*, as well as the **meta** document (in a specific engine index).
 
 - **Auth** (*In the works now!*). As expected, **Auth** handles all aspects of user management. From registration via email activation to authentication, to the
-  management of the profile, used by **Geo** to show the weather of the landing locality, chosen by the user during the registration, after he logs in.
+  management of the profile, used by **Geo** to show the weather of the landing locality, chosen by the user during the registration, every time she logs in.
 
 ### Frontend
 
 **TBD** ... in truth, I already have a working prototype, but it's in Typescript/React. I won't use that, then. Plan is to only use FP Scala, accordingly
 the last step will be to write the frontend using Scala.js. Still, it should more or less draws on the same ideas, style and functionalities of the former implementation,
-as shown in [this screenshot](docs/screenshot.png), with the addition of a user login/registration page.
+as shown in [this screenshot](docs/screenshot.png), with the addition of user login/profile/registration pages.
 
 ### Requirements
 
@@ -82,7 +82,7 @@ $ ./bin/stop-w4s-ssl.sh
 ```
 to stop the application.
 
-The Geo service can also just use http (at port 8082), instead of https, by starting Weather4s with:
+All microservices can also just use http (but it's not recommended), instead of https, by starting Weather4s with:
 ```shell
 $ ./bin/start-w4s.sh
 ```
@@ -93,14 +93,15 @@ $ ./bin/stop-w4s.sh
 
 #### Health checks (e.g. with HTTPie)
 ```shell
-$ http :8081/auth/health
+$ http --verify no https://0.0.0.0:8442/auth/health
 $ http --verify no https://0.0.0.0:8443/geo/health
-$ http :8083/loader/health
+$ http --verify no https://0.0.0.0:8444/loader/health
 ```
 
 #### Configuration
 
-All Weather4s' configuration properties can be found in one file, **bin/env-w4s**.
+All Weather4s' configuration properties can be found in **env-w4s**, **env-w4s-ssl** and **env-w4s-secrets**
+under the **bin/** directory.
 
 #### Running a single microservice
 

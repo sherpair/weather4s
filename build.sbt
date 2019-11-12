@@ -23,7 +23,7 @@ lazy val auth = (project in file("auth-service"))
     headerSettings(IntegrationTest),
     inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest)),
     parallelExecution in IntegrationTest := false,
-    libraryDependencies ++= doobie ++ testcontainers
+    libraryDependencies ++= doobie ++ javamail ++ testcontainers ++ tsec
   )
 
 lazy val geo = (project in file("geo-service"))
@@ -84,7 +84,7 @@ lazy val commonSettings = Seq(
   // coverageMinimum := 80,
   // coverageFailOnMinimum := true,
   // wartremoverErrors in (Compile, compile) ++= Warts.unsafe,
-  libraryDependencies ++= base ++ fs2 ++ http4s,
+  libraryDependencies ++= base ++ fs2 ++ http4s ++ jwt,
   // trapExit := false,
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
@@ -98,7 +98,7 @@ lazy val dockerSettings = Seq(
 )
 
 lazy val scalacFlags = Seq(
-  // "-Ypartial-unification"   // remove for 2.13
+  // "-Ypartial-unification"   // removed for 2.13
   "-deprecation",              // warn about use of deprecated APIs
   "-encoding", "UTF-8",        // source files are in UTF-8
   "-feature",                  // warn about misused language features

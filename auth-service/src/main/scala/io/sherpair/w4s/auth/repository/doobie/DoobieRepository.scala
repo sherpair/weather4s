@@ -13,7 +13,7 @@ import doobie.syntax.connectionio._
 import doobie.util.ExecutionContexts
 import doobie.util.transactor.Transactor
 import io.sherpair.w4s.auth.config.AuthConfig
-import io.sherpair.w4s.auth.repository.{Repository, RepositoryUserOps}
+import io.sherpair.w4s.auth.repository.{Repository, RepositoryTokenOps, RepositoryUserOps}
 import io.sherpair.w4s.domain.{Logger, W4sError}
 import org.flywaydb.core.Flyway
 
@@ -32,6 +32,10 @@ class DoobieRepository[F[_]] (
 
   override val init: F[Unit] = initialHealthCheck >> migrate
 
+  override val tokenRepositoryOps: F[RepositoryTokenOps[F]] = DoobieRepositoryTokenOps[F](transactor)
+
+  override val userRepositoryOps: F[RepositoryUserOps[F]] = DoobieRepositoryUserOps[F](transactor)
+
   private lazy val initialHealthCheck: F[Unit] =
     healthCheck(C.healthAttemptsDB, C.healthIntervalDB) >>= { result =>
       val HC = s"Health check successful after ${result._1} ${if (result._1 == 1) "attempt" else "attempts"}"
@@ -40,13 +44,11 @@ class DoobieRepository[F[_]] (
 
   private lazy val migrate: F[Unit] =
     S.delay {
-      Flyway.configure.dataSource(C.db.url, C.db.user, new String(C.db.password, StandardCharsets.UTF_8))
+      Flyway.configure.dataSource(C.db.url, C.db.user, new String(C.db.secret, StandardCharsets.UTF_8))
         .load.migrate
     } >>= {
       migrations => L.info(s"Applied ${migrations} database migrations")
     }
-
-  override val userRepositoryOps: F[RepositoryUserOps[F]] = DoobieRepositoryUserOps[F](transactor)
 }
 
 object DoobieRepository {
@@ -60,7 +62,7 @@ object DoobieRepository {
         db.driver,
         db.url,
         db.user,
-        new String(db.password, StandardCharsets.UTF_8),
+        new String(db.secret, StandardCharsets.UTF_8),
         connectEC,
         Blocker.liftExecutionContext(blockerEC))
 

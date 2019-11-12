@@ -6,19 +6,15 @@ import java.time.temporal.ChronoUnit.SECONDS
 
 import scala.concurrent.ExecutionContext.global
 
-import cats.{FlatMap, Id}
 import cats.effect.{Blocker, ContextShift, IO, Timer}
-import cats.syntax.either._
 import com.dimafeng.testcontainers.GenericContainer
 import doobie.scalatest.IOChecker
 import doobie.util.ExecutionContexts
 import doobie.util.transactor.Transactor
 import io.chrisdavenport.log4cats.noop.NoOpLogger
 import io.sherpair.w4s.auth.config.AuthConfig
-import io.sherpair.w4s.auth.domain.User
 import io.sherpair.w4s.auth.repository.doobie.DoobieRepository
 import io.sherpair.w4s.domain.Logger
-import org.scalacheck.Gen
 import org.scalatest.{BeforeAndAfterAll, EitherValues, Matchers, OptionValues, PrivateMethodTester, WordSpec}
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy
 
@@ -30,8 +26,7 @@ package object auth {
       with Matchers
       with EitherValues
       with OptionValues
-      with PrivateMethodTester
-      with UserValues {
+      with PrivateMethodTester {
 
     implicit val cs: ContextShift[IO] = IO.contextShift(global)
     implicit val timer: Timer[IO] = IO.timer(global)
@@ -59,7 +54,7 @@ package object auth {
         env = Map(
           "POSTGRES_DB" -> db.name,
           "POSTGRES_USER" -> db.user,
-          "POSTGRES_PASSWORD" -> new String(db.password, StandardCharsets.UTF_8)
+          "POSTGRES_PASSWORD" -> new String(db.secret, StandardCharsets.UTF_8)
         ),
         waitStrategy = new LogMessageWaitStrategy()
           .withRegEx(".*database system is ready to accept connections.*\\s")
@@ -80,46 +75,9 @@ package object auth {
     def initTransactor: Transactor[IO] = {
       val db = authConfig.db
       Transactor.fromDriverManager[IO](
-        db.driver, db.url, db.user, new String(db.password, StandardCharsets.UTF_8),
+        db.driver, db.url, db.user, new String(db.secret, StandardCharsets.UTF_8),
         Blocker.liftExecutionContext(ExecutionContexts.synchronous)
       )
     }
-  }
-
-  trait UserValues {
-    val unicodeSeq: IndexedSeq[Char] = (Char.MinValue to Char.MaxValue).filter(Character.isDefined)
-    val unicodeChar: Gen[Char] = Gen.oneOf(unicodeSeq)
-
-    lazy val countries = IndexedSeq(
-      "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium",
-      "Belize", "Benin", "Bermuda", "Bhutan", "Bolivia", "Botswana", "Brazil",
-      "Bulgaria", "Burkina Faso", "Burundi", "Cameroon", "Canada", "Cape Verde"
-    )
-
-    private lazy val userDefault = User(
-      0, "accountId", "firstName", "lastName", "email@sherpair.io", "password", "12345678", "Benin"
-    )
-
-    def genUser: User = oneGen[User](userGen, userDefault)
-
-    /* Gen[T].sample might fail (and returning None) */
-    def oneGen[T](gen: Gen[T], default: T): T =
-      FlatMap[Id].tailRecM[Int, T](100) { attempt =>
-        gen.sample.fold(if (attempt == 0) default.asRight[Int] else (attempt - 1).asLeft[T])(_.asRight[Int])
-      }
-
-    def userGen: Gen[User] = for {
-      accountId <- Gen.alphaStr
-      firstName <- Gen.alphaStr
-      lastName <- Gen.alphaStr
-      email <- email("sherpair.io")
-      password <- unicodeStr(16)
-      geoId <- Gen.numStr
-      country <- Gen.oneOf(countries)
-    }
-      yield new User(0L, accountId, firstName, lastName, email, password, geoId, country)
-
-    def email(domain: String): Gen[String] = Gen.alphaStr.suchThat(_.nonEmpty).map(_ + s"@${domain}")
-    def unicodeStr(len: Int): Gen[String] = for { cs <- Gen.listOfN(len, unicodeChar) } yield cs.mkString
   }
 }

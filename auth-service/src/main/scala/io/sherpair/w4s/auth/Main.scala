@@ -6,6 +6,7 @@ import io.sherpair.w4s.auth.config.AuthConfig
 import io.sherpair.w4s.auth.repository.doobie.DoobieRepository
 import io.sherpair.w4s.domain.Logger
 import org.slf4j.LoggerFactory
+import tsec.passwordhashers.jca.SCrypt
 
 object Main extends IOApp {
 
@@ -14,7 +15,7 @@ object Main extends IOApp {
     implicit val configuration: AuthConfig = AuthConfig()
     implicit val logger: Logger[IO] = Slf4jLogger.getLogger
 
-    Resources[IO](DoobieRepository[IO])
+    CallGraph[IO, SCrypt](SCrypt, DoobieRepository[IO])
       .use(_ => IO.never)
       .attempt
       .map(_.fold(exitWithError(_), (_: Unit) => ExitCode.Success))

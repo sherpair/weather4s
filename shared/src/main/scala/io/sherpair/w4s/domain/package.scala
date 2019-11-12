@@ -29,7 +29,7 @@ package object domain {
 
   val noBulkErrors = List.empty[BulkError]
 
-  val now: Long = toMillis(LocalDateTime.now)
+  val now: Long = Instant.now.toEpochMilli  // UTC
   val startOfTheDay: Long = toMillis(LocalDate.now.atStartOfDay)
 
   def fromIsoDate(date: String): Long = Try(toMillis(LocalDate.parse(date).atStartOfDay)).getOrElse(epochAsLong)

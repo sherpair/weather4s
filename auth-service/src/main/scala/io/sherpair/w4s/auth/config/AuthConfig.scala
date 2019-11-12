@@ -4,16 +4,23 @@ import java.nio.charset.StandardCharsets
 
 import scala.concurrent.duration.FiniteDuration
 
-import io.sherpair.w4s.config.{Configuration, Host, Service}
+import io.sherpair.w4s.config.{AuthToken, Configuration, Host, Service, SSLData}
 import pureconfig.{ConfigReader, ConfigSource}
 // Needed.
 import pureconfig.generic.auto._
 
 case class AuthConfig(
+  authToken: AuthToken,
   db: DB,
-  hostAuth: Host,
+  host: Host,
   httpPoolSize: Int,
-  service: Service
+  plainHttp: Boolean,
+  privateKey: String,
+  root: String,
+  service: Service,
+  smtp: Host,
+  sslData: SSLData,
+  token: Token
 ) extends Configuration {
 
   val healthAttemptsDB: Int = db.healthCheck.attempts
@@ -22,7 +29,7 @@ case class AuthConfig(
 
 object AuthConfig {
 
-  implicit val passwordReader: ConfigReader[Array[Byte]] =
+  implicit val secretReader: ConfigReader[Array[Byte]] =
     ConfigReader[String].map(_.getBytes(StandardCharsets.UTF_8))
 
   def apply(): AuthConfig = ConfigSource.default.loadOrThrow[AuthConfig]

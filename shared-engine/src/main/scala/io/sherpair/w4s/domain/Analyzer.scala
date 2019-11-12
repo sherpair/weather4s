@@ -1,6 +1,6 @@
 package io.sherpair.w4s.domain
 
-import enumeratum._
+import enumeratum.{CirceEnum, Enum, EnumEntry}
 
 /* Languages supported by the ElasticSearch's Analyzers */
 sealed trait Analyzer extends EnumEntry
