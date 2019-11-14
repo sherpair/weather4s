@@ -25,7 +25,7 @@ class SuggestApp[F[_]: Sync](
   object Fuzziness extends OptionalQueryParamDecoderMatcher[Int]("fuzziness")
   object MaxSuggestions extends OptionalQueryParamDecoderMatcher[Int]("maxSuggestions")
 
-  def routes: HttpRoutes[F] = HttpRoutes.of[F] {
+  val routes: HttpRoutes[F] = HttpRoutes.of[F] {
     case GET -> Root / "suggest" / id / localityTerm
       :? Analyzer(analyzer)
       +& Fuzziness(fuzziness)

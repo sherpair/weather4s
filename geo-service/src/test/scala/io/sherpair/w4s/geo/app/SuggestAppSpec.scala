@@ -23,7 +23,7 @@ class SuggestAppSpec extends GeoSpec with DataSuggesterMap {
       override def dataSuggesterMap: Map[String, DataSuggesters] = _dataSuggesterMap
 
       val responseIO = withSuggestAppRoutes(
-        Request[IO](GET, unsafeFromString(s"/geo/suggest/${headCountry}/${headTerm}"))
+        Request[IO](GET, unsafeFromString(s"${C.root}/suggest/${headCountry}/${headTerm}"))
       )
       val response = responseIO.unsafeRunSync
       response.status shouldBe Status.Ok
@@ -39,7 +39,7 @@ class SuggestAppSpec extends GeoSpec with DataSuggesterMap {
 
       val noMatch = "qwerty"
       val responseIO = withSuggestAppRoutes(
-        Request[IO](GET, unsafeFromString(s"/geo/suggest/${headCountry}/${noMatch}"))
+        Request[IO](GET, unsafeFromString(s"${C.root}/suggest/${headCountry}/${noMatch}"))
       )
       val response = responseIO.unsafeRunSync
       response.status shouldBe Status.Ok
@@ -54,7 +54,7 @@ class SuggestAppSpec extends GeoSpec with DataSuggesterMap {
       override def dataSuggesterMap: Map[String, DataSuggesters] = _dataSuggesterMap
 
       val responseIO = withSuggestAppRoutes(
-        Request[IO](GET, unsafeFromString(s"/geo/suggest/${headCountry}/${encode(headTermUnicode, "UTF-8")}"))
+        Request[IO](GET, unsafeFromString(s"${C.root}/suggest/${headCountry}/${encode(headTermUnicode, "UTF-8")}"))
       )
       val response = responseIO.unsafeRunSync
       response.status shouldBe Status.Ok
@@ -72,7 +72,7 @@ class SuggestAppSpec extends GeoSpec with DataSuggesterMap {
       val parameter = s"maxSuggestions=${maxSuggestions}"
 
       val responseIO = withSuggestAppRoutes(
-        Request[IO](GET, unsafeFromString(s"/geo/suggest/${tailCountry}/${tailTerm}?${parameter}"))
+        Request[IO](GET, unsafeFromString(s"${C.root}/suggest/${tailCountry}/${tailTerm}?${parameter}"))
       )
       val response = responseIO.unsafeRunSync
       response.status shouldBe Status.Ok
@@ -101,7 +101,7 @@ class SuggestAppSpec extends GeoSpec with DataSuggesterMap {
       countryCache <- engineOps.init
       updatedCache <- cacheUpdate(countryCache)
       cacheRef <- CacheRef[IO](updatedCache)
-      response <- Router(("/geo", new SuggestApp[IO](cacheRef, engineOps).routes)).orNotFound.run(request)
+      response <- Router((C.root, new SuggestApp[IO](cacheRef, engineOps).routes)).orNotFound.run(request)
     }
     yield response
 }

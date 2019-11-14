@@ -5,10 +5,15 @@ import java.security.{KeyFactory, PublicKey}
 import java.security.spec.X509EncodedKeySpec
 import java.time.Clock
 
+import cats.Applicative
+import cats.data.{Kleisli, OptionT}
 import cats.effect.Sync
 import cats.syntax.option._
 import io.sherpair.w4s.config.Configuration
-import io.sherpair.w4s.domain.W4sError
+import io.sherpair.w4s.domain.{ClaimContent, W4sError}
+import org.http4s.{AuthedRoutes, Request}
+import org.http4s.dsl.Http4sDsl
+import org.http4s.server.AuthMiddleware
 import pdi.jwt.JwtAlgorithm.{RS256, RS384, RS512}
 import pdi.jwt.JwtAlgorithm
 import pdi.jwt.algorithms.JwtRSAAlgorithm
@@ -16,6 +21,8 @@ import pdi.jwt.algorithms.JwtRSAAlgorithm
 package object auth {
 
   type Audience = String
+  type Auth[F[_]] = AuthMiddleware[F, ClaimContent]
+  type AuthResult[F[_]] = Kleisli[F, Request[F], Either[String, ClaimContent]]
 
   implicit lazy val clock = Clock.systemUTC()
 
@@ -50,4 +57,13 @@ package object auth {
       val keyFactory = KeyFactory.getInstance("RSA");
       keyFactory.generatePublic(publicKeySpec)
     }
+
+  def onFailure[F[_]: Applicative]: AuthedRoutes[String, F] = {
+    val http4sDsl = Http4sDsl[F]
+    import http4sDsl._
+
+    Kleisli {
+      request => OptionT.liftF(Forbidden(request.authInfo))
+    }
+  }
 }

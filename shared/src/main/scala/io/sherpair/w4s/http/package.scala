@@ -22,7 +22,7 @@ package object http {
 
   def maybeWithSSLContext[F[_]](implicit C: Configuration, S: Sync[F]): Resource[F, Option[SSLContext]] =
     Resource.liftF {
-      S.delay(sys.env.get("W4S_AUTH_PLAIN_HTTP").fold(true)(_.toLowerCase != "true"))
+      S.delay(C.plainHttp.fold(true)(identity))
         .ifM(withSSLContext(C.sslData), S.pure(none[SSLContext]))
     }
 

@@ -27,7 +27,6 @@ lazy val auth = (project in file("auth-service"))
   )
 
 lazy val geo = (project in file("geo-service"))
-  .configs(IntegrationTest)
   .dependsOn(shared4e % "compile -> compile; test -> test")
   // .enablePlugins(GraalVMNativeImagePlugin)
   .enablePlugins(AshScriptPlugin, DockerPlugin, JavaAppPackaging)  // Alpine -> Ash Shell
@@ -36,15 +35,10 @@ lazy val geo = (project in file("geo-service"))
   .settings(
     name := "geo-service",
     mainClass in Compile := Some("io.sherpair.w4s.geo.Main"),
-    Defaults.itSettings,
-    headerSettings(IntegrationTest),
-    inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest)),
-    parallelExecution in IntegrationTest := false,
     libraryDependencies ++= http4sClient
   )
 
 lazy val loader = (project in file("loader-service"))
-  .configs(IntegrationTest)
   .dependsOn(shared4e % "compile -> compile; test -> test")
   // .enablePlugins(GraalVMNativeImagePlugin)
   .enablePlugins(AshScriptPlugin, DockerPlugin, JavaAppPackaging)  // Alpine -> Ash Shell
@@ -53,10 +47,6 @@ lazy val loader = (project in file("loader-service"))
   .settings(
     name := "loader-service",
     mainClass in Compile := Some("io.sherpair.w4s.loader.Main"),
-    Defaults.itSettings,
-    headerSettings(IntegrationTest),
-    inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest)),
-    parallelExecution in IntegrationTest := false,
     libraryDependencies ++= http4sClient
   )
 
@@ -64,7 +54,7 @@ lazy val shared = (project in file("shared"))
   .settings(commonSettings: _*)
 
 lazy val shared4e = (project in file("shared-engine"))
-  .dependsOn(shared % "compile -> compile")
+  .dependsOn(shared % "compile -> compile; test -> test")
   .settings(commonSettings: _*)
   .settings(
     libraryDependencies ++= elastic ++ lucene

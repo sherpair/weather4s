@@ -3,10 +3,10 @@ package io.sherpair.w4s.auth.repository.doobie
 import scala.concurrent.duration._
 
 import cats.effect.IO
-import io.sherpair.w4s.auth.{SqlSpec, TokenFixtures, UserFixtures}
+import io.sherpair.w4s.auth.{MemberFixtures, TokenFixtures}
 import tsec.common.SecureRandomId
 
-class TokenSqlSpec extends SqlSpec with TokenFixtures with UserFixtures {
+class TokenSqlSpec extends TransactorSpec with TokenFixtures with MemberFixtures {
 
   val tokenSql = new TokenSql[IO]
   import tokenSql._
@@ -14,13 +14,12 @@ class TokenSqlSpec extends SqlSpec with TokenFixtures with UserFixtures {
   "Syntax of TokenSql statements" should {
     "be type checked" in {
 
-      val token = genToken
+      val token = genToken(genMember())
       check(insertStmt(token))
       check(findSql(token.id))
-      check(updateStmt(token))
       check(deleteSql(token.id))
 
-      check(deleteIfOlderThanSql(2 hours, genUser()))
+      check(deleteIfOlderThanSql(2 hours, genMember()))
 
       check(countSql)
       check(emptySql)
@@ -30,3 +29,4 @@ class TokenSqlSpec extends SqlSpec with TokenFixtures with UserFixtures {
     }
   }
 }
+

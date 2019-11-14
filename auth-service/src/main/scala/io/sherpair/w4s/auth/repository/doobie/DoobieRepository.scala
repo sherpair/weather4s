@@ -13,7 +13,7 @@ import doobie.syntax.connectionio._
 import doobie.util.ExecutionContexts
 import doobie.util.transactor.Transactor
 import io.sherpair.w4s.auth.config.AuthConfig
-import io.sherpair.w4s.auth.repository.{Repository, RepositoryTokenOps, RepositoryUserOps}
+import io.sherpair.w4s.auth.repository.{Repository, RepositoryMemberOps, RepositoryTokenOps}
 import io.sherpair.w4s.domain.{Logger, W4sError}
 import org.flywaydb.core.Flyway
 
@@ -32,9 +32,9 @@ class DoobieRepository[F[_]] (
 
   override val init: F[Unit] = initialHealthCheck >> migrate
 
-  override val tokenRepositoryOps: F[RepositoryTokenOps[F]] = DoobieRepositoryTokenOps[F](transactor)
+  override val memberRepositoryOps: F[RepositoryMemberOps[F]] = DoobieRepositoryMemberOps[F](transactor)
 
-  override val userRepositoryOps: F[RepositoryUserOps[F]] = DoobieRepositoryUserOps[F](transactor)
+  override val tokenRepositoryOps: F[RepositoryTokenOps[F]] = DoobieRepositoryTokenOps[F](transactor)
 
   private lazy val initialHealthCheck: F[Unit] =
     healthCheck(C.healthAttemptsDB, C.healthIntervalDB) >>= { result =>

@@ -2,6 +2,7 @@ package io.sherpair.w4s.geo.app
 
 import cats.data.Kleisli
 import cats.effect.{ConcurrentEffect, IO}
+import io.sherpair.w4s.FakeAuth
 import io.sherpair.w4s.domain.{Country, CountryCount}
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.geo.{GeoSpec, IOengine}
@@ -14,13 +15,12 @@ import org.http4s.circe._
 import org.http4s.client.Client
 import org.http4s.server.Router
 import org.http4s.syntax.kleisli._
-import org.http4s.syntax.literals._
 
-class CountryAppSpec extends GeoSpec {
+class CountryAppSpec extends GeoSpec with FakeAuth {
 
   "GET -> /geo/countries" should {
     "return the number of total, available and not-available-yet countries" in new IOengine {
-      val responseIO = withCountryAppRoutes(Request[IO](GET, uri"/geo/countries"))
+      val responseIO = withCountryAppRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/countries")))
 
       implicit val countryCountDecoder: EntityDecoder[IO, CountryCount] = jsonOf[IO, CountryCount]
 
@@ -41,7 +41,7 @@ class CountryAppSpec extends GeoSpec {
       val expectedCode = countryUnderTest.code
       val expectedName = countryUnderTest.name
 
-      val responseIO = withCountryAppRoutes(Request[IO](GET, unsafeFromString(s"/geo/country/${expectedCode}"))
+      val responseIO = withCountryAppRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/country/${expectedCode}"))
       )
 
       implicit val countryDecoder: EntityDecoder[IO, Country] = jsonOf[IO, Country]
@@ -58,7 +58,7 @@ class CountryAppSpec extends GeoSpec {
 
   "GET -> /geo/country/{id}" should {
     "return \"NotFound\" if the request concerns an unknown country" in new IOengine {
-      val responseIO = withCountryAppRoutes(Request[IO](GET, uri"/geo/country/unknown"))
+      val responseIO = withCountryAppRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/country/unknown")))
 
       val response = responseIO.unsafeRunSync
       response.status shouldBe Status.NotFound
@@ -76,7 +76,7 @@ class CountryAppSpec extends GeoSpec {
       implicit0(engineOps: EngineOps[IO]) <- EngineOps[IO](C.clusterName)
       countriesCache <- engineOps.init
       cacheRef <- CacheRef[IO](countriesCache)
-      response <- Router(("/geo", new CountryApp[IO](cacheRef, client).routes)).orNotFound.run(request)
+      response <- Router((C.root, new CountryApp[IO](withMemberAuth, cacheRef, client).routes)).orNotFound.run(request)
     } yield response
   }
 }

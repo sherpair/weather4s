@@ -6,8 +6,8 @@ import cats.syntax.functor._
 import fs2.Stream
 import io.circe.Json
 import io.circe.syntax.EncoderOps
-import io.sherpair.w4s.auth.{Authoriser, Claims}
-import io.sherpair.w4s.domain.{AuthData, ClaimContent, Country, CountryCount, Logger}
+import io.sherpair.w4s.auth.Auth
+import io.sherpair.w4s.domain.{ClaimContent, Country, CountryCount, Logger}
 import io.sherpair.w4s.geo.cache.CacheRef
 import io.sherpair.w4s.geo.config.GeoConfig
 import io.sherpair.w4s.geo.http.Loader
@@ -19,7 +19,7 @@ import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
 
 class CountryApp[F[_]](
-    authData: AuthData, cacheRef: CacheRef[F], client: Client[F])(
+    auth: Auth[F], cacheRef: CacheRef[F], client: Client[F])(
     implicit C: GeoConfig, CE: ConcurrentEffect[F], L: Logger[F]
 ) extends Http4sDsl[F] {
 
@@ -39,9 +39,7 @@ class CountryApp[F[_]](
       }
     }
 
-  val memberAuthoriser = Authoriser(authData, Claims.audAuth)
-
-  val routes = memberAuthoriser(memberRoutes)
+  val routes = auth(memberRoutes)
 
   private def addCountry(id: String): F[Response[F]] =
     CE.delay(id.length == 2).ifM(cacheRef.countryByCode(id.toLowerCase), cacheRef.countryByName(id)) >>= {

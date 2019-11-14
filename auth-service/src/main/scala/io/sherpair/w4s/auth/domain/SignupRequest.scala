@@ -9,7 +9,7 @@ case class SignupRequest(
   lastName: String,
   email: String,
   geoId: String,
-  country: String,     // Country code,
+  country: String,      // Country code,
   secret: Array[Byte]   // Must be empty for update
 )
 

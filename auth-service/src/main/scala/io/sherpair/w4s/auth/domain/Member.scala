@@ -7,7 +7,7 @@ import io.circe.derivation.{deriveDecoder, deriveEncoder}
 import io.circe.syntax._
 import io.sherpair.w4s.domain.{ClaimContent, Role}
 
-case class User(
+case class Member(
   id: Long = -1L,
   accountId: String,
   firstName: String,
@@ -24,8 +24,8 @@ case class User(
     new ClaimContent(id, accountId, firstName, lastName, geoId, country, role, createdAt).asJson.noSpaces
 }
 
-object User {
+object Member {
 
-  implicit val decoder: Decoder[User] = deriveDecoder[User]
-  implicit val encoder: Encoder[User] = deriveEncoder[User]
+  implicit val decoder: Decoder[Member] = deriveDecoder[Member]
+  implicit val encoder: Encoder[Member] = deriveEncoder[Member]
 }

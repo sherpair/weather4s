@@ -17,6 +17,7 @@ case class GeoConfig(
   host: Host,
   hostLoader: Host,
   httpPoolSize: Int,
+  plainHttp: Option[Boolean],
   root: String,
   service: Service,
   sslData: SSLData,

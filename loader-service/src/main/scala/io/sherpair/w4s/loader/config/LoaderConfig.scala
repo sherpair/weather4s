@@ -14,6 +14,7 @@ case class LoaderConfig(
   host: Host,
   httpPoolSize: Int,
   maxEnqueuedCountries: Int,
+  plainHttp: Option[Boolean],
   root: String,
   service: Service,
   sslData: SSLData,

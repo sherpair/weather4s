@@ -8,7 +8,7 @@ trait Repository[F[_]] {
 
   val init: F[Unit]
 
-  val tokenRepositoryOps: F[RepositoryTokenOps[F]]
+  val memberRepositoryOps: F[RepositoryMemberOps[F]]
 
-  val userRepositoryOps: F[RepositoryUserOps[F]]
+  val tokenRepositoryOps: F[RepositoryTokenOps[F]]
 }

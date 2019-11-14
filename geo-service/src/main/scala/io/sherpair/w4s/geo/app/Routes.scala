@@ -1,8 +1,9 @@
 package io.sherpair.w4s.geo.app
 
-import cats.effect.{Resource, ConcurrentEffect => CE}
-import io.sherpair.w4s.auth.{jwtAlgorithm, loadPublicRsaKey}
+import cats.effect.{ConcurrentEffect => CE, Resource}
+import io.sherpair.w4s.auth.{jwtAlgorithm, loadPublicRsaKey, Authoriser, Claims}
 import io.sherpair.w4s.domain.{AuthData, Logger}
+import io.sherpair.w4s.domain.Role.Master
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.geo.cache.CacheRef
 import io.sherpair.w4s.geo.config.GeoConfig
@@ -20,15 +21,19 @@ object Routes {
       jwtAlgorithm <- Resource.liftF(jwtAlgorithm)
 
       publicKey <- Resource.liftF(loadPublicRsaKey)
-      authData = AuthData(jwtAlgorithm, publicKey)
 
-      routes <- Resource.liftF(CE[F].delay(
+      routes <- Resource.liftF(CE[F].delay {
+
+        val authData = AuthData(jwtAlgorithm, publicKey)
+        val masterAuthoriser = Authoriser[F](authData, Claims.audGeo, _.role == Master)
+        val memberAuthoriser = Authoriser(authData, Claims.audGeo)
+
         Seq(
-          new CountryApp[F](authData, cacheRef, client).routes,
-          new Monitoring[F](authData).routes,
-          new SuggestApp[F](cacheRef, engineOps).routes,
+          new CountryApp[F](memberAuthoriser, cacheRef, client).routes,
+          new Monitoring[F](masterAuthoriser).routes,
+          new SuggestApp[F](cacheRef, engineOps).routes
         )
-      ))
+      })
     }
     yield routes
 }

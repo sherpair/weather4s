@@ -5,7 +5,7 @@ import fs2.Stream
 trait RepositoryOps[F[_], K, R] {
 
   /* Test-only */
-  def count: F[Int]
+  def count: F[Long]
 
   def delete(id: K): F[Int]
 

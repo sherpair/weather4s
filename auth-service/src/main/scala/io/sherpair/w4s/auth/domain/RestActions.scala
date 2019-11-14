@@ -12,11 +12,11 @@ object AuthAction extends Enum[AuthAction] with CirceEnum[AuthAction] {
   case object Signin extends AuthAction
 }
 
-sealed trait UserAction extends EnumEntry
-object UserAction extends Enum[UserAction] with CirceEnum[UserAction] {
+sealed trait MemberAction extends EnumEntry
+object MemberAction extends Enum[MemberAction] with CirceEnum[MemberAction] {
 
   val values = findValues
 
-  case object UserDelete extends UserAction
-  case object UserUpdate extends UserAction
+  case object MemberDelete extends MemberAction
+  case object MemberUpdate extends MemberAction
 }

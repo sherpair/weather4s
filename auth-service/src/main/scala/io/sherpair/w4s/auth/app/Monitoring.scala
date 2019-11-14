@@ -6,16 +6,15 @@ import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import io.circe.syntax._
-import io.sherpair.w4s.auth.{Authoriser, Claims}
+import io.sherpair.w4s.auth.Auth
 import io.sherpair.w4s.auth.config.AuthConfig
 import io.sherpair.w4s.auth.repository.Repository
-import io.sherpair.w4s.domain.{AuthData, ClaimContent}
-import io.sherpair.w4s.domain.Role.Master
+import io.sherpair.w4s.domain.ClaimContent
 import org.http4s.{AuthedRoutes, Response}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 
-class Monitoring[F[_]: Sync](authData: AuthData)(implicit C: AuthConfig, R: Repository[F]) extends Http4sDsl[F] {
+class Monitoring[F[_]: Sync](auth: Auth[F])(implicit C: AuthConfig, R: Repository[F]) extends Http4sDsl[F] {
 
   val attempts = 10
 
@@ -24,9 +23,7 @@ class Monitoring[F[_]: Sync](authData: AuthData)(implicit C: AuthConfig, R: Repo
       case GET -> Root / "health" as _ => healthCheck
     }
 
-  val masterAuthoriser = Authoriser[F](authData, Claims.audAuth, _.role == Master)
-
-  val routes = masterAuthoriser(masterOnlyRoutes)
+  val routes = auth(masterOnlyRoutes)
 
   private def healthCheck: F[Response[F]] =
     for {
