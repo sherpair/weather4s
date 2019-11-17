@@ -18,18 +18,15 @@ import org.http4s.syntax.kleisli._
 
 class MemberAppSpec extends TransactorSpec with MemberFixtures with FakeAuth with Http4sDsl[IO] {
 
-  implicit val memberEncoder: EntityEncoder[IO, Member] = jsonEncoderOf[IO, Member]
   implicit val updateRequestEncoder: EntityEncoder[IO, UpdateRequest] = jsonEncoderOf[IO, UpdateRequest]
 
   "GET -> /auth/member/{id}" should {
-    "successfully return a member given an existing member-id" in  {
+    "return a member given an existing member-id" in  {
       val signupRequest = genSignupRequest
 
       val response = DoobieRepository[IO].use {
-        _.memberRepositoryOps >>= { repositoryMemberOps =>
-          implicit val R: RepositoryMemberOps[IO] = repositoryMemberOps
-
-          R.empty >> R.insert(signupRequest, genSecret) >>= { member =>
+        _.memberRepositoryOps >>= { implicit R =>
+          R.empty >> R.insert(signupRequest) >>= { member =>
             withMemberAppRoutes(Request[IO](GET, unsafeFromString(s"${aC.root}/member/${member.id}")))
           }
         }
@@ -46,9 +43,7 @@ class MemberAppSpec extends TransactorSpec with MemberFixtures with FakeAuth wit
   "GET -> /auth/member/{id}" should {
     "return a NotFound status code for a non-existing member-id" in  {
       val response = DoobieRepository[IO].use {
-        _.memberRepositoryOps >>= { repositoryMemberOps =>
-          implicit val R: RepositoryMemberOps[IO] = repositoryMemberOps
-
+        _.memberRepositoryOps >>= { implicit R =>
           R.empty >>
             withMemberAppRoutes(Request[IO](GET, unsafeFromString(s"${aC.root}/member/${fakeId}")))
         }
@@ -60,67 +55,65 @@ class MemberAppSpec extends TransactorSpec with MemberFixtures with FakeAuth wit
 
 /*
   "GET -> /auth/members" should {
-    "successfully return a list of all existing members" in  {
+    "return a list of all existing members" in  {
       val signupRequest = genSignupRequest
 
-      val responseIO = DoobieRepository[IO].use {
-        _.memberRepositoryOps >>= { repositoryMemberOps =>
-          implicit val R: RepositoryMemberOps[IO] = repositoryMemberOps
-
+      val response = DoobieRepository[IO].use {
+        _.memberRepositoryOps >>= { implicit R =>
           R.empty >>
-            R.insert(signupRequest, genSecret) >>
-              R.insert(genSignupRequest, genSecret) >>
-                R.insert(genSignupRequest, genSecret) >>
+            R.insert(signupRequest) >>
+              R.insert(genSignupRequest) >>
+                R.insert(genSignupRequest) >>
                   withMemberAppRoutes(Request[IO](GET, unsafeFromString(s"${aC.root}/members")))
         }
-      }
+      }.unsafeRunSync
 
-      val response = responseIO.unsafeRunSync
       response.status shouldBe Status.Ok
 
-      val members = response.as[Members].unsafeRunSync
+      import io.circe.Json
+      import io.circe.jawn.CirceSupportParser
+      import jawnfs2._
+      import org.typelevel.jawn.RawFacade
+
+      implicit val facade: RawFacade[Json] = CirceSupportParser.facade
+
+      val streamOfMembers = response.body.chunks.parseJsonStream.map(_.as[Member]).rethrow
+
+      val members = streamOfMembers.compile.toList.unsafeRunSync
       members.size shouldBe 3
       members.find(_.accountId == signupRequest.accountId) shouldBe signupRequest
     }
   }
-*/
 
-/*
   "GET -> /auth/members" should {
-    "successfully return an empty list when there are no members" in  {
-      val responseIO = DoobieRepository[IO].use {
-        _.memberRepositoryOps >>= { repositoryMemberOps =>
-          implicit val R: RepositoryMemberOps[IO] = repositoryMemberOps
-
+    "return an empty list when there are no members" in  {
+      val response = DoobieRepository[IO].use {
+        _.memberRepositoryOps >>= { implicit R =>
           R.empty >>
             withMemberAppRoutes(Request[IO](GET, unsafeFromString(s"${aC.root}/members")))
         }
-      }
+      }.unsafeRunSync
 
-      val response = responseIO.unsafeRunSync
       response.status shouldBe Status.Ok
-
-      val members = response.as[Members].unsafeRunSync
-      members.size shouldBe 0
+      response.as[Members].unsafeRunSync.size shouldBe 0
     }
   }
 */
 
   "PUT -> /auth/member/{id}" should {
-    "successfully update an existing active member" in  {
+    "update an existing active member and return NoContent" in  {
       val expAccountId = alpha
       val expEmail = email("sherpair.io")
 
       val (response, member) = DoobieRepository[IO].use {
-        _.memberRepositoryOps >>= { repositoryMemberOps =>
-          implicit val R: RepositoryMemberOps[IO] = repositoryMemberOps
-
-          R.empty >> R.insert(genSignupRequest, genSecret) >>= { m =>
+        _.memberRepositoryOps >>= { implicit R =>
+          R.empty >> R.insert(genSignupRequest) >>= { m =>
             R.enable(m.id) >>
               withMemberAppRoutes(
                 m.id,
-                Request[IO](PUT, unsafeFromString(s"${aC.root}/member/${m.id}"))
-                  .withEntity(UpdateRequest(expAccountId, m.firstName, m.lastName, expEmail, m.geoId, m.country))
+                Request[IO](PUT, unsafeFromString(s"${aC.root}/member/${m.id}")).withEntity(
+                  UpdateRequest(expAccountId, m.firstName, m.lastName, expEmail, m.geoId, m.country)
+                )
               ) >>= {
                 response => (IO(response), R.find(m.id)).tupled
               }
@@ -139,14 +132,13 @@ class MemberAppSpec extends TransactorSpec with MemberFixtures with FakeAuth wit
   "PUT -> /auth/member/{id}" should {
     "return NotFound when trying to update an existing inactive member, " in  {
       val response = DoobieRepository[IO].use {
-        _.memberRepositoryOps >>= { repositoryMemberOps =>
-          implicit val R: RepositoryMemberOps[IO] = repositoryMemberOps
-
-          R.empty >> R.insert(genSignupRequest, genSecret) >>= { m =>
+        _.memberRepositoryOps >>= { implicit R =>
+          R.empty >> R.insert(genSignupRequest) >>= { m =>
             withMemberAppRoutes(
               m.id,
-              Request[IO](PUT, unsafeFromString(s"${aC.root}/member/${m.id}"))
-                .withEntity(UpdateRequest(alpha, m.firstName, m.lastName, email("sherpair.io"), m.geoId, m.country))
+              Request[IO](PUT, unsafeFromString(s"${aC.root}/member/${m.id}")).withEntity(
+                UpdateRequest(alpha, m.firstName, m.lastName, email("sherpair.io"), m.geoId, m.country)
+              )
             )
           }
         }
@@ -157,12 +149,10 @@ class MemberAppSpec extends TransactorSpec with MemberFixtures with FakeAuth wit
   }
 
   "DELETE -> /auth/member/{id}" should {
-    "successfully delete a member given an existing member-id" in  {
+    "delete a member given an existing member-id and return NoContent" in  {
       val (response, memberO) = DoobieRepository[IO].use {
-        _.memberRepositoryOps >>= { repositoryMemberOps =>
-          implicit val R: RepositoryMemberOps[IO] = repositoryMemberOps
-
-          R.empty >> R.insert(genSignupRequest, genSecret) >>= { member =>
+        _.memberRepositoryOps >>= { implicit R =>
+          R.empty >> R.insert(genSignupRequest) >>= { member =>
             withMemberAppRoutes(
               member.id,
               Request[IO](DELETE, unsafeFromString(s"${aC.root}/member/${member.id}"))
@@ -181,11 +171,8 @@ class MemberAppSpec extends TransactorSpec with MemberFixtures with FakeAuth wit
   "DELETE -> /auth/member/{id}" should {
     "return NotFound when trying to delete a non-existing member-id" in  {
       val response = DoobieRepository[IO].use {
-        _.memberRepositoryOps >>= { repositoryMemberOps =>
-          implicit val R: RepositoryMemberOps[IO] = repositoryMemberOps
-
+        _.memberRepositoryOps >>= { implicit R =>
           val memberId = fakeId
-
           R.empty >>
             withMemberAppRoutes(
               memberId,

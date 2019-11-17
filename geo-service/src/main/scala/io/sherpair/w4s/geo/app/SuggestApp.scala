@@ -26,19 +26,19 @@ class SuggestApp[F[_]: Sync](
   object MaxSuggestions extends OptionalQueryParamDecoderMatcher[Int]("maxSuggestions")
 
   val routes: HttpRoutes[F] = HttpRoutes.of[F] {
-    case GET -> Root / "suggest" / id / localityTerm
+    case GET -> Root / "suggest" / country / localityTerm
       :? Analyzer(analyzer)
       +& Fuzziness(fuzziness)
       +& MaxSuggestions(maxSuggestions) =>
 
-    (if (id.length == 2) cacheRef.countryByCode(id.toLowerCase) else cacheRef.countryByName(id)) >>= {
+    (if (country.length == 2) cacheRef.countryByCode(country.toLowerCase) else cacheRef.countryByName(country)) >>= {
       _.map { country =>
         resolveParameters(country, analyzer, fuzziness, maxSuggestions) match {
           case Left(error) => BadRequest(error)
           case Right(parameters) => Ok(suggest(country, localityTerm, parameters), MT)
         }
       }
-      .getOrElse(NotFound(s"Country(${id}) is not known"))
+      .getOrElse(NotFound(s"Country(${country}) is not known"))
     }
   }
 

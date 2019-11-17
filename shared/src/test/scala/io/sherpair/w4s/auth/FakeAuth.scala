@@ -7,20 +7,20 @@ import cats.syntax.applicative._
 import cats.syntax.either._
 import io.sherpair.w4s.auth.{jwtAlgorithm, loadPublicRsaKey, onFailure, Auth, AuthResult}
 import io.sherpair.w4s.config.Configuration
-import io.sherpair.w4s.domain.{AuthData, ClaimContent, Role}
+import io.sherpair.w4s.domain.{ClaimContent, DataForAuthorisation, Role}
 import io.sherpair.w4s.domain.Role.{Master, Member}
 import org.http4s.server.AuthMiddleware
 
 trait FakeAuth extends Fixtures {
 
-  def withAuthData(implicit C: Configuration): AuthData = {
+  def withDataForAuthorisation(implicit C: Configuration): DataForAuthorisation = {
     val t = (for {
       jwtAlgorithm <- jwtAlgorithm[IO]
       publicKey <- loadPublicRsaKey[IO]
     }
     yield (jwtAlgorithm, publicKey)).unsafeRunSync
 
-    AuthData(t._1, t._2)
+    DataForAuthorisation(t._1, t._2)
   }
 
   def withMasterAuth[F[_]: Monad]: Auth[F] = AuthMiddleware(validateFakeRequest(fakeId, Master), onFailure)

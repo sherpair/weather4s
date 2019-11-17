@@ -2,23 +2,19 @@ package io.sherpair.w4s.auth.app
 
 import java.security.PrivateKey
 import java.time.Instant
-import javax.mail.Message.RecipientType
-import javax.mail.Session
-import javax.mail.internet.MimeMessage
 
 import scala.concurrent.duration.FiniteDuration
-import scala.io.Source.fromResource
 
-import cats.effect.{Resource, Sync}
+import cats.effect.Sync
 import cats.syntax.applicative._
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.option._
 import io.sherpair.w4s.auth.{clock, Claims}
-import io.sherpair.w4s.auth.config.AuthConfig
+import io.sherpair.w4s.auth.config.{AuthConfig, MaybePostman}
 import io.sherpair.w4s.auth.domain.{EmailType, Member, Token}
-import io.sherpair.w4s.auth.repository.{RepositoryMemberOps, RepositoryTokenOps}
+import io.sherpair.w4s.auth.repository.RepositoryTokenOps
 import io.sherpair.w4s.domain.{unit, Logger}
 import org.http4s.{AuthScheme, Credentials, Response}
 import org.http4s.headers.Authorization
@@ -27,7 +23,7 @@ import pdi.jwt.algorithms.JwtRSAAlgorithm
 import tsec.common.SecureRandomId
 
 class Authenticator[F[_]](
-    jwtAlgorithm: JwtRSAAlgorithm, privateKey: PrivateKey)(
+    jwtAlgorithm: JwtRSAAlgorithm, postman: MaybePostman, privateKey: PrivateKey)(
     implicit C: AuthConfig, L: Logger[F], R: RepositoryTokenOps[F], S: Sync[F]
 ) {
 
@@ -58,9 +54,9 @@ class Authenticator[F[_]](
       now <- S.delay(Instant.now())
       expiryDate = now.plusSeconds(C.token.duration.toSeconds)
       token <- R.insert(Token(SecureRandomId.Strong.generate, member.id, expiryDate))
-      _ <- sendEmail(token, member, emailType)
+      _ <- S.delay(postman.sendEmail(token, member, emailType))
     }
-      yield unit
+    yield unit
 
   private def claims(member: Member): JwtClaim = {
     val now = JwtTime.nowSeconds
@@ -69,40 +65,14 @@ class Authenticator[F[_]](
       (now + C.authToken.duration.toSeconds).some, now.some, now.some
     )
   }
-
-  private def content(template: String, token: SecureRandomId, member: Member): String =
-    template
-      .replaceFirst("==firstName==", member.firstName)
-      .replaceFirst("==email url protocol==", C.plainHttp.fold("https")(if (_) "http" else "https"))
-      .replaceFirst("==email url host==", C.host.joined)
-      .replaceFirst("==email url path==", C.root)
-      .replaceFirst("==email url token==", token)
-
-  private def loadTemplate(template: String): F[String] =
-    Resource
-      .fromAutoCloseable(S.delay(fromResource(template)))
-      .use(_.mkString.pure[F])
-
-  private def sendEmail(token: Token, member: Member, emailType: EmailType): F[Unit] =
-    loadTemplate(emailType.template).map { template =>
-      C.smtp.fold(unit) { smtp =>  // Unless due to a bug, C.smtp is never None as it was set at program start.
-        val session = Session.getInstance(smtp.properties, smtp.credentials)
-        val message = new MimeMessage(session)
-        message.setFrom("Weather4s")
-        message.setRecipients(RecipientType.TO, member.email);
-        message.setSubject(emailType.reason)
-        message.setContent(content(template, token.tokenId, member), "text/html")
-        smtp.transporter.send(message)
-      }
-    }
 }
 
 object Authenticator {
 
-  def apply[F[_]](
-      jwtAlgorithm: JwtRSAAlgorithm, privateKey: PrivateKey)(
-      implicit C: AuthConfig, L: Logger[F], R: RepositoryTokenOps[F], RU: RepositoryMemberOps[F], S: Sync[F]
+  def apply[F[_]: Sync](
+      jwtAlgorithm: JwtRSAAlgorithm, postman: MaybePostman, privateKey: PrivateKey)(
+      implicit C: AuthConfig, L: Logger[F], R: RepositoryTokenOps[F]
   ): Authenticator[F] =
-    new Authenticator[F](jwtAlgorithm, privateKey)
+    new Authenticator[F](jwtAlgorithm, postman, privateKey)
 }
 

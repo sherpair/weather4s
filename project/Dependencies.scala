@@ -85,7 +85,8 @@ object Dependencies {
   )
 
   lazy val jwt = Seq(
-    "com.pauldijou" %% "jwt-core" % version.jwt
+    "com.pauldijou" %% "jwt-circe" % version.jwt exclude("io.circe", "circe-generic"),
+    "com.pauldijou" %% "jwt-core"  % version.jwt
   )
 
   lazy val lucene = Seq(

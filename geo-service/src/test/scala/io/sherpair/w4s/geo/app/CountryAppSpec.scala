@@ -37,12 +37,20 @@ class CountryAppSpec extends GeoSpec with FakeAuth {
   }
 
   "GET -> /geo/country/{id}" should {
+    "return 404 when the resource url is incomplete" in new IOengine {
+      val response =
+        withCountryAppRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/country/"))).unsafeRunSync
+
+      response.status shouldBe Status.NotFound
+    }
+  }
+
+  "GET -> /geo/country/{id}" should {
     "return the requested country" in new IOengine {
       val expectedCode = countryUnderTest.code
       val expectedName = countryUnderTest.name
 
-      val responseIO = withCountryAppRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/country/${expectedCode}"))
-      )
+      val responseIO = withCountryAppRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/country/${expectedCode}")))
 
       implicit val countryDecoder: EntityDecoder[IO, Country] = jsonOf[IO, Country]
 

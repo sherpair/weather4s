@@ -1,14 +1,15 @@
 package io.sherpair.w4s.auth
 
-import javax.mail.Message
+import java.util.concurrent.Executors
 
-import scala.concurrent.ExecutionContext.global
+import scala.concurrent.ExecutionContext
 
 import cats.effect.{ContextShift, IO, Timer}
-import cats.syntax.option._
 import io.chrisdavenport.log4cats.noop.NoOpLogger
-import io.sherpair.w4s.auth.config.{Smtp, SmtpEnv, Transporter}
-import io.sherpair.w4s.domain.{unit, Logger}
+import io.sherpair.w4s.auth.domain.Member
+import io.sherpair.w4s.domain.Logger
+import org.http4s.EntityEncoder
+import org.http4s.circe.jsonEncoderOf
 import org.scalatest.{EitherValues, Matchers, OptionValues, PrivateMethodTester, WordSpec}
 
 trait AuthSpec
@@ -18,13 +19,10 @@ trait AuthSpec
     with OptionValues
     with PrivateMethodTester {
 
-  implicit val cs: ContextShift[IO] = IO.contextShift(global)
-  implicit val timer: Timer[IO] = IO.timer(global)
+  implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
+  implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+  implicit val timer: Timer[IO] = IO.timer(ec)
   implicit val logger: Logger[IO] = NoOpLogger.impl[IO]
 
-  val fakeSmtp = Smtp(SmtpEnv("smtp.gmail.com", "587", "firstName.lastName@gmail.com", "onePassword",
-    new Transporter {
-      override def send(message: Message): Unit = unit
-    }
-  )).some
+  implicit val memberEncoder: EntityEncoder[IO, Member] = jsonEncoderOf[IO, Member]
 }

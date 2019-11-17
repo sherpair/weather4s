@@ -1,14 +1,14 @@
 package io.sherpair.w4s.auth.repository.doobie
 
 import cats.effect.Sync
+import cats.syntax.flatMap._
 import doobie.syntax.connectionio._
 import doobie.syntax.stream._
 import doobie.util.transactor.Transactor
 import fs2.Stream
 import io.sherpair.w4s.auth.config.AuthConfig
-import io.sherpair.w4s.auth.domain.{Member, SignupRequest, UpdateRequest}
+import io.sherpair.w4s.auth.domain.{Crypt, Member, SignupRequest, UpdateRequest}
 import io.sherpair.w4s.auth.repository.RepositoryMemberOps
-import tsec.passwordhashers.PasswordHash
 
 private[doobie] class DoobieRepositoryMemberOps[F[_]](
     tx: Transactor[F])(implicit C: AuthConfig, S: Sync[F]
@@ -37,11 +37,13 @@ private[doobie] class DoobieRepositoryMemberOps[F[_]](
   override def find(fieldId: String, fieldVal: String): F[Option[Member]] =
     findSql(fieldId, fieldVal).option.transact(tx)
 
-  override def findForSignin(fieldId: String, fieldVal: String): F[Option[(Member, String)]] =
-    findForSigninSql(fieldId, fieldVal).option.transact(tx)
+  override def findWithSecret(fieldId: String, fieldVal: String): F[Option[(Member, String)]] =
+    findWithSecretSql(fieldId, fieldVal).option.transact(tx)
 
-  override def insert[A](signupRequest: SignupRequest, secret: PasswordHash[A]): F[Member] =
-    insertSql(signupRequest, secret).transact(tx)
+  override def insert(signupRequest: SignupRequest): F[Member] =
+    Crypt.hashpw(signupRequest.secret) >>= {
+      insertSql(signupRequest, _).transact(tx)
+    }
 
   override def list: Stream[F, Member] = listSql.stream.transact(tx)
 

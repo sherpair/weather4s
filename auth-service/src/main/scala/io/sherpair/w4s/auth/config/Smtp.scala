@@ -1,26 +1,28 @@
 package io.sherpair.w4s.auth.config
 
 import java.util.Properties
-import javax.mail.{Authenticator, Message, PasswordAuthentication, Transport}
+import javax.mail.{Authenticator, PasswordAuthentication}
 
-case class SmtpEnv(host: String, port: String, user: String, secret: String, transporter: Transporter)
-
-case class Smtp(properties: Properties, credentials: Authenticator, transporter: Transporter)
+case class Smtp(properties: Properties, credentials: Authenticator)
 
 object Smtp {
 
-  def apply(env: SmtpEnv): Smtp = {
+  def apply(): Smtp = {
 
     val credentials = new Authenticator {
-      override val getPasswordAuthentication = new PasswordAuthentication(env.user, env.secret)
+      override val getPasswordAuthentication =
+        new PasswordAuthentication(
+          envVar("W4S_AUTH_SMTP_USER"),
+          envVar("W4S_AUTH_SMTP_SECRET")
+        )
     }
 
     val properties: Properties = {
       val properties = new Properties
       properties.put("mail.mime.allowutf8", "true")
       properties.put("mail.smtp.auth", "true")
-      properties.put("mail.smtp.host", env.host)
-      properties.put("mail.smtp.port", env.port)
+      properties.put("mail.smtp.host", envVar("W4S_AUTH_SMTP_ADDRESS"))
+      properties.put("mail.smtp.port", envVar("W4S_AUTH_SMTP_PORT"))
       properties.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory")
       properties.put("mail.smtp.ssl.enable", "true")
       properties.put("mail.smtp.starttls.enable", "true")
@@ -28,10 +30,11 @@ object Smtp {
       properties
     }
 
-    Smtp(properties, credentials, env.transporter)
+    Smtp(properties, credentials)
   }
-}
 
-class Transporter {
-  def send(message: Message): Unit = Transport.send(message)
+  private def envVar(name: String): String = sys.env.get(name).getOrElse(envVarUnset(name))
+
+  private def envVarUnset(name: String): String =
+    throw new NoSuchElementException(s"Env var '${name}' is not set but it's mandatory. Aborting...")
 }

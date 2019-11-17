@@ -1,12 +1,11 @@
 package io.sherpair.w4s.auth.config
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 
 import scala.concurrent.duration.FiniteDuration
 
 import io.sherpair.w4s.config.{AuthToken, Configuration, Host, Service, SSLData}
-import pureconfig.{ConfigCursor, ConfigReader, ConfigSource}
-import pureconfig.error.{ConfigReaderFailures, ConvertFailure, KeyNotFound}
+import pureconfig.{ConfigReader, ConfigSource}
 // Needed.
 import pureconfig.generic.auto._
 
@@ -19,7 +18,6 @@ case class AuthConfig(
   privateKey: String,
   root: String,
   service: Service,
-  smtp: Option[Smtp],
   sslData: SSLData,
   token: Token
 ) extends Configuration {
@@ -30,11 +28,16 @@ case class AuthConfig(
 
 object AuthConfig {
 
-  implicit val secretReader: ConfigReader[Array[Byte]] =
-    ConfigReader[String].map(_.getBytes(StandardCharsets.UTF_8))
+/* To keep for future reference...
+   in case of optional case classes (config's properties) containing types not supported by pureconfig
+     ex.  AuthConfig(postman: Option[Postman])
 
-  implicit val smtpReader: ConfigReader[Smtp] =
-    (_: ConfigCursor) => Left(ConfigReaderFailures(ConvertFailure(KeyNotFound("smtp"), None, path = "")))
+  implicit val postmanReader: ConfigReader[Postman] =
+    (_: ConfigCursor) => Left(ConfigReaderFailures(ConvertFailure(KeyNotFound("postman"), None, path = "")))
+*/
+
+  implicit val secretReader: ConfigReader[Array[Byte]] =
+    ConfigReader[String].map(_.getBytes(UTF_8))
 
   def apply(): AuthConfig = ConfigSource.default.loadOrThrow[AuthConfig]
 }

@@ -6,7 +6,7 @@ import cats.syntax.applicativeError._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import io.sherpair.w4s.auth.config.AuthConfig
-import io.sherpair.w4s.auth.domain.{AuthAction, EmailType, Member, MemberRequest, SignupRequest}
+import io.sherpair.w4s.auth.domain.{AuthAction, Crypt, EmailType, Member, MemberRequest, SignupRequest}
 import io.sherpair.w4s.auth.domain.AuthAction._
 import io.sherpair.w4s.auth.domain.EmailType.Activation
 import io.sherpair.w4s.auth.repository.RepositoryMemberOps
@@ -16,25 +16,24 @@ import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 import tsec.common.SecureRandomId
 import tsec.passwordhashers.{PasswordHash, PasswordHasher}
-import tsec.passwordhashers.jca.JCAPasswordPlatform
 
-class AuthApp[F[_]: Sync, A](
-    A: Authenticator[F], jca: JCAPasswordPlatform[A])(
+class AuthApp[F[_]: Sync](
+    A: Authenticator[F])(
     implicit C: AuthConfig, E: EntityEncoder[F, Member], L: Logger[F], R: RepositoryMemberOps[F]
 ) extends Http4sDsl[F] {
 
-  implicit val passwordHasher: PasswordHasher[F, A] = jca.syncPasswordHasher
+  implicit val passwordHasher: PasswordHasher[F, Crypt] = Crypt.syncPasswordHasher
 
   implicit val loginDecoder: EntityDecoder[F, MemberRequest] = jsonOf
   implicit val registrationDecoder: EntityDecoder[F, SignupRequest] = jsonOf
 
   def routes: HttpRoutes[F] = HttpRoutes.of[F] {
-    case            GET -> Root / "activation-token" / tokenId => activation(tokenId)
+    case            GET -> Root / "account-activation" / tokenId => activation(tokenId)
 
     case request @ POST -> Root / "expired-token" => validateMember(request, ActivationExpired)
 
     /* TODO */
-    case request @ POST -> Root / "reset-token" => validateMember(request, ResetSecret)
+    case request @ POST -> Root / "reset-secret" => validateMember(request, ResetSecret)
 
     case request @ POST -> Root / "signin" => validateMember(request, Signin)
 
@@ -46,7 +45,7 @@ class AuthApp[F[_]: Sync, A](
       _.fold(NotFound()) { token =>
         R.find(token.memberId) >>= {
           _.fold(NotFound()) { member =>
-            (A.deleteToken(token) *> R.enable(member.id)).whenA(!member.active) >> Ok()
+            (A.deleteToken(token) *> R.enable(member.id)).whenA(!member.active) >> Ok(member)
           }
         }
       }
@@ -74,20 +73,18 @@ class AuthApp[F[_]: Sync, A](
 
   private def signup(request: Request[F]): F[Response[F]] =
     request.decode[SignupRequest] { signupRequest =>
-      jca.hashpw(signupRequest.secret) >>= {
-        R.insert(signupRequest, _)
-          .flatTap(A.sendToken(_, Activation))
-          .flatMap(member => Created(member))
-          .handleErrorWith {
-            case W4sError(msg, _) => Conflict(msg)
-          }
-      }
+      R.insert(signupRequest)
+        .flatTap(A.sendToken(_, Activation))
+        .flatMap(member => Created(member))
+        .handleErrorWith {
+          case W4sError(msg, _) => Conflict(msg)
+        }
     }
 
   private def validateMember(request: Request[F], authAction: AuthAction): F[Response[F]] =
     request.decode[MemberRequest] { memberRequest =>
       val accountId = memberRequest.accountId
-      R.findForSignin(fieldId(accountId), accountId)
+      R.findWithSecret(fieldId(accountId), accountId)
         .flatMap(_.fold(notFound(accountId))(validateRequest(_, memberRequest, authAction)))
     }
 
@@ -98,7 +95,7 @@ class AuthApp[F[_]: Sync, A](
       case ActivationExpired => resendActivationToken(memberWithSecret._1)
       case ResetSecret => sendResetSecretToken(memberWithSecret._1)
       case Signin =>
-        jca.checkpwBool[F](memberRequest.secret, PasswordHash[A](memberWithSecret._2))
+        Crypt.checkpwBool[F](memberRequest.secret, PasswordHash[Crypt](memberWithSecret._2))
           .ifM(signinResponse(memberWithSecret._1), notFound(memberRequest.accountId))
     }
 }

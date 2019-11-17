@@ -6,7 +6,7 @@ import cats.effect.{IO, Sync}
 import io.sherpair.w4s.domain.now
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.engine.memory.DataSuggesters
-import io.sherpair.w4s.geo.{DataSuggesterMap, GeoSpec, IOengineWithDataSuggesters}
+import io.sherpair.w4s.geo.{DataSuggesterMap, GeoSpec, IOengine, IOengineWithDataSuggesters}
 import io.sherpair.w4s.geo.cache.{Cache, CacheRef}
 import io.sherpair.w4s.geo.engine.EngineOps
 import io.sherpair.w4s.types.Suggestions
@@ -17,6 +17,15 @@ import org.http4s.server.Router
 import org.http4s.syntax.kleisli._
 
 class SuggestAppSpec extends GeoSpec with DataSuggesterMap {
+
+  "GET -> /geo/suggest/{id}/{term}" should {
+    "return 404 when the resource url is incomplete" in new IOengine {
+      val response =
+        withSuggestAppRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/suggest/${headTerm}"))).unsafeRunSync
+
+      response.status shouldBe Status.NotFound
+    }
+  }
 
   "GET -> /geo/suggest/{id}/{term}" should {
     "return a number of suggestions, according to country and locality term provided" in new IOengineWithDataSuggesters {

@@ -1,6 +1,6 @@
 package io.sherpair.w4s.auth.repository.doobie
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 
 import scala.concurrent.duration._
 
@@ -32,7 +32,7 @@ class DoobieRepository[F[_]] (
 
   override val init: F[Unit] = initialHealthCheck >> migrate
 
-  override val memberRepositoryOps: F[RepositoryMemberOps[F]] = DoobieRepositoryMemberOps[F](transactor)
+  override def memberRepositoryOps: F[RepositoryMemberOps[F]] = DoobieRepositoryMemberOps[F](transactor)
 
   override val tokenRepositoryOps: F[RepositoryTokenOps[F]] = DoobieRepositoryTokenOps[F](transactor)
 
@@ -44,7 +44,7 @@ class DoobieRepository[F[_]] (
 
   private lazy val migrate: F[Unit] =
     S.delay {
-      Flyway.configure.dataSource(C.db.url, C.db.user, new String(C.db.secret, StandardCharsets.UTF_8))
+      Flyway.configure.dataSource(C.db.url, C.db.user, new String(C.db.secret, UTF_8))
         .load.migrate
     } >>= {
       migrations => L.info(s"Applied ${migrations} database migrations")
@@ -62,7 +62,7 @@ object DoobieRepository {
         db.driver,
         db.url,
         db.user,
-        new String(db.secret, StandardCharsets.UTF_8),
+        new String(db.secret, UTF_8),
         connectEC,
         Blocker.liftExecutionContext(blockerEC))
 

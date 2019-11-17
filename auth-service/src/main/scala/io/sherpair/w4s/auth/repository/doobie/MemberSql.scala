@@ -12,18 +12,19 @@ import doobie.syntax.string._
 import doobie.util.Meta
 import doobie.util.fragment.Fragment.const
 import io.sherpair.w4s.auth.config.AuthConfig
-import io.sherpair.w4s.auth.domain.{Member, SignupRequest, UpdateRequest}
+import io.sherpair.w4s.auth.domain.{Crypt, Member, SignupRequest, UpdateRequest}
 import io.sherpair.w4s.domain.{Role, W4sError}
 import tsec.passwordhashers.PasswordHash
 
 private[doobie] class MemberSql[F[_]: Sync](implicit C: AuthConfig) {
 
+  implicit val hashMeta: Meta[PasswordHash[Crypt]] = PasswordHash.subst[Crypt](implicitly[Meta[String]])
   implicit val roleMeta: Meta[Role] = pgEnumStringOpt("role", Role.withNameOption, _.entryName)
 
   val fields = fr"id, account_id, first_name, last_name, email, geo_id, country, active, role, created_at"
 
-  def changeSecretSql[A](member: Member, secret: PasswordHash[A]): ConnectionIO[Int] =
-    sql"""UPDATE members SET secret = ${secret.toString} WHERE id = ${member.id} AND active = TRUE""".update.run
+  def changeSecretSql(member: Member, secret: PasswordHash[Crypt]): ConnectionIO[Int] =
+    sql"""UPDATE members SET secret = ${secret} WHERE id = ${member.id} AND active = TRUE""".update.run
 
   /* Test-only */
   val countSql: Query0[Long] = sql"""SELECT COUNT(*) FROM members""".query
@@ -51,11 +52,11 @@ private[doobie] class MemberSql[F[_]: Sync](implicit C: AuthConfig) {
   def findSql(fieldId: String, fieldVal: String): Query0[Member] =
     (fr"SELECT" ++ fields ++ fr"FROM members WHERE" ++ const(fieldId) ++ fr"= $fieldVal").query[Member]
 
-  def findForSigninSql(fieldId: String, fieldVal: String): Query0[(Member, String)] =
+  def findWithSecretSql(fieldId: String, fieldVal: String): Query0[(Member, String)] =
     (fr"SELECT" ++ fields ++ fr", secret" ++ fr"FROM members WHERE" ++ const(fieldId) ++ fr"= $fieldVal")
       .query[(Member, String)]
 
-  def insertSql[A](sr: SignupRequest, secret: PasswordHash[A]): ConnectionIO[Member] =
+  def insertSql(sr: SignupRequest, secret: PasswordHash[Crypt]): ConnectionIO[Member] =
     insertStmt(sr, secret)
       .withUniqueGeneratedKeys[(Long, Instant)]("id", "created_at")
       .attemptSomeSqlState {
@@ -66,12 +67,12 @@ private[doobie] class MemberSql[F[_]: Sync](implicit C: AuthConfig) {
         case Right(result) => FC.pure(member(result._1, sr, result._2))
       }
 
-  def insertStmt[A](sr: SignupRequest, secret: PasswordHash[A]): Update0 =
+  def insertStmt(sr: SignupRequest, secret: PasswordHash[Crypt]): Update0 =
     sql"""
       INSERT INTO members (account_id, first_name, last_name, email, geo_id, country, secret)
       VALUES (
         ${sr.accountId}, ${sr.firstName}, ${sr.lastName},
-        ${sr.email}, ${sr.geoId}, ${sr.country}, ${secret.toString}
+        ${sr.email}, ${sr.geoId}, ${sr.country}, ${secret}
       )
     """.update
 

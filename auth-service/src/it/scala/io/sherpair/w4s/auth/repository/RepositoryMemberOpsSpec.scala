@@ -11,17 +11,14 @@ class RepositoryMemberOpsSpec extends TransactorSpec with MemberFixtures {
   "An \"empty\" op (truncate)" should {
     "remove all existing members" in  {
       val count = DoobieRepository[IO].use(
-        _.memberRepositoryOps >>= { repositoryMemberOps =>
-          val secret = genSecret
+        _.memberRepositoryOps >>= { R =>
 
-          val R: RepositoryMemberOps[IO] = repositoryMemberOps
-
-          R.insert(genSignupRequest, secret) >>
-            R.insert(genSignupRequest, secret) >>
+          R.insert(genSignupRequest) >>
+            R.insert(genSignupRequest) >>
               R.empty >>
-                R.insert(genSignupRequest, secret) >>
-                  R.insert(genSignupRequest, secret) >>
-                    R.insert(genSignupRequest, secret) >>
+                R.insert(genSignupRequest) >>
+                  R.insert(genSignupRequest) >>
+                    R.insert(genSignupRequest) >>
                       R.count
         }
       )

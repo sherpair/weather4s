@@ -30,7 +30,7 @@ trait TransactorSpec extends AuthSpec with BeforeAndAfterAll with IOChecker {
   }
 
   def initContainer: (AuthConfig, Any) = {
-    val C: AuthConfig = AuthConfig().copy(smtp = fakeSmtp)
+    val C: AuthConfig = AuthConfig()
     val db = C.db
 
     val container = GenericContainer(

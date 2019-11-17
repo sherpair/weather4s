@@ -6,37 +6,36 @@ import cats.syntax.applicative._
 import cats.syntax.either._
 import cats.syntax.try_._
 import io.circe.parser.decode
-import io.sherpair.w4s.domain.{AuthData, ClaimContent}
-import org.http4s.{AuthScheme, Request}
+import io.sherpair.w4s.domain.{ClaimContent, DataForAuthorisation}
+import org.http4s.{AuthScheme, Message}
 import org.http4s.Credentials.Token
-import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Authorization
 import org.http4s.server.AuthMiddleware
-import pdi.jwt.{Jwt, JwtClaim, JwtOptions}
+import pdi.jwt.{Jwt, JwtCirce, JwtClaim, JwtOptions}
 import pdi.jwt.exceptions.JwtException
 
-class Authoriser[F[_]: Sync](
-    authData: AuthData, audience: Audience, isAuthorised: ClaimContent => Boolean
-) extends Http4sDsl[F] {
+abstract class MessageValidator[F[_]: Sync](
+    dfa: DataForAuthorisation, audience: Audience, isAuthorised: ClaimContent => Boolean
+) {
 
-  val authorise: Auth[F] = AuthMiddleware(validateRequest, onFailure)
-
-  private def decodeToken(token: String): F[Either[String, ClaimContent]] =
-    Jwt.decodeAll(token, authData.publicKey, authData.jwtAlgorithms, JwtOptions.DEFAULT)
-      .map(tokenAsTuple => validateClaim(tokenAsTuple._2))
-      .recover { case _: JwtException => notAuthorized }
-      .liftTo[F]
+   private def decodeToken(token: String): F[Either[String, ClaimContent]] = {
+     JwtCirce.decodeAll(token, dfa.publicKey, dfa.jwtAlgorithms, JwtOptions.DEFAULT)
+     // Jwt.decodeAll(token, dfa.publicKey, dfa.jwtAlgorithms, JwtOptions.DEFAULT)
+       .map(tokenAsTuple => validateClaim(tokenAsTuple._2))
+       .recover { case _: JwtException => notAuthorized }
+       .liftTo[F]
+   }
 
   private lazy val missingToken = "Authorization token is missing".asLeft[ClaimContent].pure[F]
 
   private lazy val notAuthorized = "Not authorized".asLeft[ClaimContent]
 
-  private def retrieveToken(request: Request[F]): Option[String] =
-    request.headers.get(Authorization).collect {
+  private def retrieveToken(message: Message[F]): Option[String] =
+    message.headers.get(Authorization).collect {
       case Authorization(Token(AuthScheme.Bearer, token)) => token
     }
 
-  def validateClaim(claim: JwtClaim): Either[String, ClaimContent] =
+  private def validateClaim(claim: JwtClaim): Either[String, ClaimContent] =
     if (claim.isValid(Claims.iss, audience)) {
       decode[ClaimContent](claim.content).fold(
         _ => notAuthorized,
@@ -44,16 +43,23 @@ class Authoriser[F[_]: Sync](
       )
     } else notAuthorized
 
-  private def validateRequest: AuthResult[F] = Kleisli(validateToken(_))
+  def validateMessage(message: Message[F]): F[Either[String, ClaimContent]] =
+    retrieveToken(message).fold(missingToken)(decodeToken(_))
+}
 
-  private def validateToken(request: Request[F]): F[Either[String, ClaimContent]] =
-    retrieveToken(request).fold(missingToken)(decodeToken(_))
+class Authoriser[F[_]: Sync](
+    dfa: DataForAuthorisation, audience: Audience, isAuthorised: ClaimContent => Boolean
+) extends MessageValidator(dfa, audience, isAuthorised) {
+
+  val authorise: Auth[F] = AuthMiddleware(validateRequest, onFailure)
+
+  private def validateRequest: AuthResult[F] = Kleisli(validateMessage(_))
 }
 
 object Authoriser {
 
   def apply[F[_]: Sync](
-      authData: AuthData, audience: Audience, isAuthorised: ClaimContent => Boolean = _ => true
+      dfa: DataForAuthorisation, audience: Audience, isAuthorised: ClaimContent => Boolean = _ => true
   ): Auth[F] =
-    new Authoriser[F](authData, audience, isAuthorised).authorise
+    new Authoriser[F](dfa, audience, isAuthorised).authorise
 }
