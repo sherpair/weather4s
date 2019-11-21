@@ -17,7 +17,7 @@ import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 
 class SuggestApp[F[_]: Sync](
-  cacheRef: CacheRef[F], engineOps: EngineOps[F])(implicit C: GeoConfig) extends Http4sDsl[F] {
+    cacheRef: CacheRef[F], engineOps: EngineOps[F])(implicit C: GeoConfig) extends Http4sDsl[F] {
 
   implicit val suggestionEncoder: EntityEncoder[F, Suggestion] = jsonEncoderOf[F, Suggestion]
 

@@ -1,0 +1,94 @@
+version: '3'
+
+services:
+  elasticsearch:
+    image: ${W4S_ES_ID}:${W4S_ES_VERSION}
+    container_name: ${W4S_ES_CONTAINER}
+    ports: ["${W4S_ES_PORT}:${W4S_ES_PORT}"]
+    networks: [w4s_backend]
+    restart: on-failure
+    volumes:
+      - "${W4S_ES_VOLUME_DEST}:${W4S_ES_VOLUME_SRC}"
+    environment:
+      # not allowed when discovery.type=single-node
+      # - cluster.initial_master_nodes=elasticsearch
+      - cluster.name=${W4S_ES_CONTAINER}
+      - http.port=${W4S_ES_PORT}
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+
+  db:
+    image: ${W4S_DB_ID}:${W4S_DB_VERSION}
+    container_name: ${W4S_DB_CONTAINER}
+    ports: ["${W4S_DB_PORT}:${W4S_DB_PORT}"]
+    networks: [w4s_backend]
+    restart: on-failure
+    volumes:
+      - "${W4S_DB_VOLUME_DEST}:${W4S_DB_VOLUME_SRC}"
+    environment:
+      # Sadly hard-coded. These must be changed in case of different JDBC DB
+      - POSTGRES_DB=${W4S_DB_NAME}
+      - POSTGRES_USER=${W4S_DB_USER}
+      - POSTGRES_PASSWORD=${W4S_DB_SECRET}
+
+  auth:
+    image: auth-service:${W4S_AUTH_VERSION}
+    container_name: ${W4S_AUTH_CONTAINER}
+    ports: ["${W4S_AUTH_HTTP_PORT}:${W4S_AUTH_HTTP_PORT}"]
+    networks: [w4s_backend]
+    depends_on: [db]
+    environment:
+      - W4S_DB_ADDRESS=db
+      - W4S_DB_PORT
+      - W4S_DB_JDBC_DRIVER
+      - W4S_DB_CONNECTION_POOL
+      - W4S_DB_NAME
+      - W4S_DB_USER
+      - W4S_DB_SECRET
+      - W4S_AUTH_HTTP_ADDRESS
+      - W4S_AUTH_HTTP_PORT
+      - W4S_AUTH_PLAIN_HTTP
+      - W4S_AUTH_SMTP_ADDRESS
+      - W4S_AUTH_SMTP_PORT
+      - W4S_AUTH_SMTP_USER
+      - W4S_AUTH_SMTP_SECRET
+      - W4S_KEY_STORE_SECRET
+
+  geo:
+    image: geo-service:${W4S_GEO_VERSION}
+    container_name: ${W4S_GEO_CONTAINER}
+    ports: ["${W4S_GEO_HTTP_PORT}:${W4S_GEO_HTTP_PORT}"]
+    networks: [w4s_frontend, w4s_backend]
+    depends_on: [elasticsearch, auth, loader]
+    environment:
+      - W4S_ES_ADDRESS=elasticsearch
+      - W4S_ES_CONTAINER
+      - W4S_ES_PORT
+      - W4S_GEO_HTTP_ADDRESS
+      - W4S_GEO_HTTP_PORT
+      - W4S_GEO_PLAIN_HTTP
+      - W4S_KEY_STORE_SECRET
+      - W4S_LOADER_HTTP_ADDRESS=loader
+      - W4S_LOADER_HTTP_PORT
+      - W4S_LOADER_PLAIN_HTTP
+
+  loader:
+    image: loader-service:${W4S_LOADER_VERSION}
+    container_name: ${W4S_LOADER_CONTAINER}
+    ports: ["${W4S_LOADER_HTTP_PORT}:${W4S_LOADER_HTTP_PORT}"]
+    networks: [w4s_backend]
+    depends_on: [elasticsearch]
+    environment:
+      - W4S_ES_ADDRESS=elasticsearch
+      - W4S_ES_CONTAINER
+      - W4S_ES_PORT
+      - W4S_KEY_STORE_SECRET
+      - W4S_LOADER_HTTP_ADDRESS
+      - W4S_LOADER_HTTP_PORT
+      - W4S_LOADER_PLAIN_HTTP
+
+networks:
+  w4s_frontend:
+    driver: bridge
+  w4s_backend:
+    driver: bridge

@@ -1,0 +1,57 @@
+#!/bin/bash
+
+if [ ! -f "${DIR}/env-w4s.secrets" ]; then
+  cat <<- EOF
+
+    File "env-w4s.secrets" was not found! It should be in "${DIR}" folder,
+    and contain the following env vars (replace the question marks)...
+
+      export W4S_DB_NAME=?
+      export W4S_DB_USER=?
+      export W4S_DB_SECRET=?
+
+      export W4S_AUTH_SMTP_ADDRESS=?
+      export W4S_AUTH_SMTP_PORT=?
+      export W4S_AUTH_SMTP_USER=?
+      export W4S_AUTH_SMTP_SECRET=?
+
+      export W4S_KEY_STORE_SECRET=?    # for https only
+
+EOF
+  exit 1
+fi
+
+W4S_VERSION=$(cut -d\" -f2 "${DIR}/../version.sbt")
+
+export W4S_ES_ID="docker.elastic.co/elasticsearch/elasticsearch"
+export W4S_ES_VERSION="7.4.0"
+export W4S_ES_CONTAINER="w4sElastic"
+export W4S_ES_PORT=9200
+
+export W4S_ES_VOLUME_SRC="/usr/share/elasticsearch/data"
+export W4S_ES_VOLUME_DEST="${HOME}/docker/volumes/${W4S_ES_CONTAINER}"
+
+export W4S_DB_ID="postgres"
+export W4S_DB_VERSION="alpine"
+export W4S_DB_CONTAINER="w4sPostgres"
+export W4S_DB_PORT=5432
+export W4S_DB_JDBC_DRIVER="org.postgresql.Driver"
+export W4S_DB_CONNECTION_POOL=10
+
+export W4S_DB_VOLUME_SRC="/var/lib/postgresql/data"
+export W4S_DB_VOLUME_DEST="${HOME}/docker/volumes/${W4S_DB_CONTAINER}"
+
+export W4S_AUTH_VERSION=$W4S_VERSION
+export W4S_AUTH_CONTAINER="w4sAuth"
+export W4S_AUTH_HTTP_PORT=8081
+export W4S_AUTH_PLAIN_HTTP=true
+
+export W4S_GEO_VERSION=$W4S_VERSION
+export W4S_GEO_CONTAINER="w4sGeo"
+export W4S_GEO_HTTP_PORT=8082
+export W4S_GEO_PLAIN_HTTP=true
+
+export W4S_LOADER_VERSION=$W4S_VERSION
+export W4S_LOADER_CONTAINER="w4sLoader"
+export W4S_LOADER_HTTP_PORT=8083
+export W4S_LOADER_PLAIN_HTTP=true

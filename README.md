@@ -74,21 +74,21 @@ $ sbt "project loader" ";test; it:test"
 ## Running Weather4s
 
 ```shell
-$ ./bin/start-w4s-ssl.sh
+$ ./bin/start-w4s.sh
 ```
 and
 ```shell
-$ ./bin/stop-w4s-ssl.sh
+$ ./bin/stop-w4s.sh
 ```
 to stop the application.
 
 All microservices can also just use http (but it's not recommended), instead of https, by starting Weather4s with:
 ```shell
-$ ./bin/start-w4s.sh
+$ ./bin/start-w4s-http.sh
 ```
 In that case, it can be stopped running:
 ```shell
-$ ./bin/stop-w4s.sh
+$ ./bin/stop-w4s-http.sh
 ```
 
 #### Health checks (e.g. with HTTPie)
@@ -106,7 +106,8 @@ under the **bin/** directory.
 #### Running a single microservice
 
 ```shell
-$ ./bin/run-postgres.sh; sbt "project auth" run     # Auth requires Postgres
+# Auth requires Postgres and env vars in bin/env-w4s-secrets
+$ ./bin/run-postgres.sh; sbt "project auth" run
 ```
 or
 ```shell

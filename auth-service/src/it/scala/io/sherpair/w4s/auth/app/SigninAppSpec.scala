@@ -1,6 +1,6 @@
 package io.sherpair.w4s.auth.app
 
-import cats.effect.IO
+import cats.effect.{Blocker, IO}
 import cats.syntax.applicative._
 import cats.syntax.either._
 import cats.syntax.flatMap._
@@ -24,16 +24,11 @@ class SigninAppSpec
 
   implicit val memberRequestEncoder: EntityEncoder[IO, MemberRequest] = jsonEncoderOf[IO, MemberRequest]
 
-  val validator = new MessageValidator[IO](withDataForAuthorisation, Claims.audAuth, _ => true) {}
-
   "POST -> /auth/signin" should {
     "return 400 when the request is malformed" in  {
       val response = DoobieRepository[IO].use { implicit DR =>
         DR.memberRepositoryOps >>= { implicit RM =>
-          withAuthAppRoutes(
-            withoutPostman,
-            Request[IO](POST, unsafeFromString(s"${aC.root}/signin"))
-          )
+          withAuthAppRoutes(Request[IO](POST, unsafeFromString(s"${aC.root}/signin")))
         }
       }.unsafeRunSync
 
@@ -45,10 +40,7 @@ class SigninAppSpec
     "return 404 when the endpoint is reached by the wrong method" in  {
       val response = DoobieRepository[IO].use { implicit DR =>
         DR.memberRepositoryOps >>= { implicit RM =>
-          withAuthAppRoutes(
-            withoutPostman,
-            Request[IO](GET, unsafeFromString(s"${aC.root}/signin"))
-          )
+          withAuthAppRoutes(Request[IO](GET, unsafeFromString(s"${aC.root}/signin")))
         }
       }.unsafeRunSync
 
@@ -62,7 +54,6 @@ class SigninAppSpec
         DR.memberRepositoryOps >>= { implicit RM =>
           RM.empty >>
             withAuthAppRoutes(
-              withoutPostman,
               Request[IO](GET, unsafeFromString(s"${aC.root}/signin"))
                 .withEntity(MemberRequest("anAccountId", "aPassword".getBytes))
             )
@@ -80,7 +71,6 @@ class SigninAppSpec
           RM.empty >>
             RM.insert(genSignupRequest) >>= { member =>
             withAuthAppRoutes(
-              withoutPostman,
               Request[IO](POST, unsafeFromString(s"${aC.root}/signin"))
                 .withEntity(MemberRequest(member.accountId, "aPassword".getBytes))
             )
@@ -104,7 +94,6 @@ class SigninAppSpec
           RM.empty >>
             RM.insert(signupRequest) >>= { member =>
             withAuthAppRoutes(
-              withoutPostman,
               Request[IO](POST, unsafeFromString(s"${aC.root}/signin"))
                 .withEntity(MemberRequest(member.accountId, theSecret))
             )
@@ -117,7 +106,7 @@ class SigninAppSpec
   }
 
   "POST -> /auth/signin" should {
-    "add to the response's Authorization header the active member's data when accountId and secret match" in  {
+    "return 204 and add the Authorization header (with active member's data) when accountId and secret match" in  {
       val signupRequest = genSignupRequest
 
       // The original secret is set to zeroes by PasswordHash after the hashing.
@@ -129,12 +118,11 @@ class SigninAppSpec
             RM.insert(signupRequest) >>= { member =>
               RM.enable(member.id) >>
                 withAuthAppRoutes(
-                  withoutPostman,
                   Request[IO](POST, unsafeFromString(s"${aC.root}/signin"))
                     .withEntity(MemberRequest(member.accountId, theSecret))
                 ) >>= { response: Response[IO] =>
                   val claimContent =
-                    if (response.status == Status.Ok) validator.validateMessage(response)
+                    if (response.status == Status.NoContent) validator(response)
                     else "Not Ok".asLeft[ClaimContent].pure[IO]
 
                   IO(response, claimContent)
@@ -143,8 +131,15 @@ class SigninAppSpec
         }
       }.unsafeRunSync
 
-      response.status shouldBe Status.Ok
+      response.status shouldBe Status.NoContent
       claimContent.unsafeRunSync shouldBe Symbol("right")
     }
   }
+
+  private def validator(response: Response[IO]): IO[Either[String, ClaimContent]] =
+    new MessageValidator[IO](
+      Claims.audAuth,
+      withDataForAuthorisation(Blocker.liftExecutionContext(ec))
+    ) {}
+    .validateMessage(response)
 }

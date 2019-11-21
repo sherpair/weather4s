@@ -1,7 +1,6 @@
 package io.sherpair.w4s.auth.app
 
 import cats.effect.Sync
-import cats.syntax.applicative._
 import cats.syntax.applicativeError._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
@@ -18,7 +17,7 @@ import tsec.common.SecureRandomId
 import tsec.passwordhashers.{PasswordHash, PasswordHasher}
 
 class AuthApp[F[_]: Sync](
-    A: Authenticator[F])(
+    auth: Authenticator[F])(
     implicit C: AuthConfig, E: EntityEncoder[F, Member], L: Logger[F], R: RepositoryMemberOps[F]
 ) extends Http4sDsl[F] {
 
@@ -27,7 +26,7 @@ class AuthApp[F[_]: Sync](
   implicit val loginDecoder: EntityDecoder[F, MemberRequest] = jsonOf
   implicit val registrationDecoder: EntityDecoder[F, SignupRequest] = jsonOf
 
-  def routes: HttpRoutes[F] = HttpRoutes.of[F] {
+  val routes: HttpRoutes[F] = HttpRoutes.of[F] {
     case            GET -> Root / "account-activation" / tokenId => activation(tokenId)
 
     case request @ POST -> Root / "expired-token" => validateMember(request, ActivationExpired)
@@ -41,24 +40,31 @@ class AuthApp[F[_]: Sync](
   }
 
   private def activation(tokenId: String): F[Response[F]] =
-    A.retrieveToken(SecureRandomId.coerce(tokenId)) >>= {
+    auth.retrieveToken(SecureRandomId.coerce(tokenId)) >>= {
       _.fold(NotFound()) { token =>
         R.find(token.memberId) >>= {
-          _.fold(NotFound()) { member =>
-            (A.deleteToken(token) *> R.enable(member.id)).whenA(!member.active) >> Ok(member)
+          _.fold(NotFound()) {
+            auth.deleteToken(token) *> enableMember(_)
           }
         }
       }
     }
 
-  private def fieldId(accountId: String): String =
+  private def enableMember(member: Member): F[Response[F]] =
+    if (member.active) Ok(member)
+    else R.enable(member.id) >>= { enabled =>
+      if (enabled > 0) Ok(member.copy(active = true))
+      else L.error(s"${member} not enabled??") *> InternalServerError()
+    }
+
+      private def fieldId(accountId: String): String =
     if (accountId.indexOf('@') > 0 && accountId.count(_ == '@') == 1) "email" else "account_id"
 
   private def notFound(key: String): F[Response[F]] = NotFound(s"Member(${key}) is not known")
 
   private def resendTokenOnRateLimiting(member: Member, emailType: EmailType): F[Response[F]] =
-    A.deleteTokenIfOlderThan(C.token.rateLimit, member)
-      .ifM(A.sendToken(member, emailType) *> Ok(), TooManyRequests(C.token.rateLimit.toString))
+    auth.deleteTokenIfOlderThan(C.token.rateLimit, member)
+      .ifM(auth.sendToken(member, emailType) *> NoContent(), TooManyRequests(C.token.rateLimit.toString))
 
   private def resendActivationToken(member: Member): F[Response[F]] =
     if (member.active) NotAcceptable("Already active")
@@ -69,12 +75,12 @@ class AuthApp[F[_]: Sync](
     else Forbidden("Inactive")
 
   private def signinResponse(member: Member): F[Response[F]] =
-    if (member.active) A.addJwtToAuthorizationHeader(Ok(), member) else Forbidden("Inactive")
+    if (member.active) auth.addJwtToAuthorizationHeader(NoContent(), member) else Forbidden("Inactive")
 
   private def signup(request: Request[F]): F[Response[F]] =
     request.decode[SignupRequest] { signupRequest =>
       R.insert(signupRequest)
-        .flatTap(A.sendToken(_, Activation))
+        .flatTap(auth.sendToken(_, Activation))
         .flatMap(member => Created(member))
         .handleErrorWith {
           case W4sError(msg, _) => Conflict(msg)

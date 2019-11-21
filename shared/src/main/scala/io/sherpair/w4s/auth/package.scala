@@ -1,18 +1,21 @@
 package io.sherpair.w4s
 
-import java.nio.file.{Files, Paths}
 import java.security.{KeyFactory, PublicKey}
 import java.security.spec.X509EncodedKeySpec
 import java.time.Clock
 
 import cats.Applicative
 import cats.data.{Kleisli, OptionT}
-import cats.effect.Sync
+import cats.effect.{Blocker, ContextShift => CS, Sync}
+import cats.syntax.functor._
 import cats.syntax.option._
 import io.sherpair.w4s.config.Configuration
-import io.sherpair.w4s.domain.{ClaimContent, W4sError}
-import org.http4s.{AuthedRoutes, Request}
+import io.sherpair.w4s.domain.{loadResource, ClaimContent, Logger, W4sError}
+import io.sherpair.w4s.domain.Role.Master
+import org.http4s.{AuthedRoutes, AuthScheme, Credentials, Message, Request, Response}
+import org.http4s.Credentials.Token
 import org.http4s.dsl.Http4sDsl
+import org.http4s.headers.Authorization
 import org.http4s.server.AuthMiddleware
 import pdi.jwt.JwtAlgorithm.{RS256, RS384, RS512}
 import pdi.jwt.JwtAlgorithm
@@ -21,8 +24,9 @@ import pdi.jwt.algorithms.JwtRSAAlgorithm
 package object auth {
 
   type Audience = String
-  type Auth[F[_]] = AuthMiddleware[F, ClaimContent]
-  type AuthResult[F[_]] = Kleisli[F, Request[F], Either[String, ClaimContent]]
+  type Auth[F[_], T] = AuthMiddleware[F, T]
+  type AuthResult[F[_], T] = Kleisli[F, Request[F], Either[String, T]]
+  type Authoriser[F[_]] = AuthMiddleware[F, ClaimContent]
 
   implicit lazy val clock = Clock.systemUTC()
 
@@ -39,6 +43,9 @@ package object auth {
     lazy val issO = iss.some
   }
 
+  def addBearerTokenToRequest[F[_]](request: Request[F], token: String): Request[F] =
+    request.putHeaders(Authorization(Credentials.Token(AuthScheme.Bearer, token)))
+
   def jwtAlgorithm[F[_]](implicit C: Configuration, S: Sync[F]): F[JwtRSAAlgorithm] =
     JwtAlgorithm.fromString(C.authToken.rsaKeyAlgorithm) match {
       case RS256 if C.authToken.rsaKeyStrength == 2048 => S.pure(RS256)
@@ -49,14 +56,20 @@ package object auth {
       )
     }
 
-  def loadPublicRsaKey[F[_]](implicit C: Configuration, S: Sync[F]): F[PublicKey] =
-    S.delay {
-      val publicBytes = Files.readAllBytes(Paths.get(getClass.getResource(C.authToken.publicKey).toURI))
-      val publicKeySpec = new X509EncodedKeySpec(publicBytes)
+  def loadPublicRsaKey[F[_]: CS: Logger: Sync](implicit B: Blocker, C: Configuration): F[PublicKey] =
+    loadResource(C.authToken.publicKey).map { publicKeyBytes =>
+      val publicKeySpec = new X509EncodedKeySpec(publicKeyBytes)
 
       val keyFactory = KeyFactory.getInstance("RSA");
       keyFactory.generatePublic(publicKeySpec)
     }
+
+  def masterOnly[F[_]: Sync](claimContent: ClaimContent, f: => F[Response[F]]): F[Response[F]] = {
+    val http4sDsl = Http4sDsl[F]
+    import http4sDsl._
+
+    if (claimContent.role == Master) f else Forbidden("Not authorized")
+  }
 
   def onFailure[F[_]: Applicative]: AuthedRoutes[String, F] = {
     val http4sDsl = Http4sDsl[F]
@@ -66,4 +79,9 @@ package object auth {
       request => OptionT.liftF(Forbidden(request.authInfo))
     }
   }
+
+  def retrieveBearerTokenFromMessage[F[_]](message: Message[F]): Option[String] =
+    message.headers.get(Authorization).collect {
+      case Authorization(Token(AuthScheme.Bearer, token)) => token
+    }
 }

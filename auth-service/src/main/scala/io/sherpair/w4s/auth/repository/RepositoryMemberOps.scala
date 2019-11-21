@@ -16,5 +16,9 @@ trait RepositoryMemberOps[F[_]] extends RepositoryOps[F, Long, Member] {
 
   def insert(signupRequest: SignupRequest): F[Member]
 
-  def update(id: Long, updateRequest: UpdateRequest): F[Int]
+  def update(id: Long, email: String): F[Option[Member]]
+
+  def update(id: Long, secret: Array[Byte]): F[Int]
+
+  def update(id: Long, updateRequest: UpdateRequest): F[Option[Member]]
 }

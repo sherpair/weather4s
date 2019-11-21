@@ -17,9 +17,7 @@ object CallGraph {
 
   type CallGraphRes[F[_]] = Resource[F, (Cache, Fiber[F, Unit], Server[F])]
 
-  def apply[F[_]: CE: CS: Timer](
-      engineR: Resource[F, Engine[F]])(implicit C: GeoConfig, L: Logger[F]
-  ): CallGraphRes[F] =
+  def apply[F[_]: CE: CS: Logger: Timer](engineR: Resource[F, Engine[F]])(implicit C: GeoConfig): CallGraphRes[F] =
     for {
       implicit0(engine: Engine[F]) <- engineR
       implicit0(engineOps: EngineOps[F]) <- Resource.liftF(EngineOps[F](C.clusterName))

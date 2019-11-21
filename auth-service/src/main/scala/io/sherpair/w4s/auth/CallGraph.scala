@@ -12,8 +12,7 @@ object CallGraph {
 
   type CallGraphRes[F[_]] = Resource[F, Server[F]]
 
-  def apply[F[_]: CE: CS: Timer](repo: Resource[F, Repository[F]])(implicit C: AuthConfig, L: Logger[F]
-  ): CallGraphRes[F] =
+  def apply[F[_]: CE: CS: Logger: Timer](repo: Resource[F, Repository[F]])(implicit C: AuthConfig): CallGraphRes[F] =
     for {
       implicit0(repository: Repository[F]) <- repo
       _ <- Resource.liftF(repository.init)

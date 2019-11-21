@@ -4,9 +4,11 @@ import javax.mail.{Session, Transport}
 import javax.mail.Message.RecipientType
 import javax.mail.internet.MimeMessage
 
+import cats.syntax.either._
 import cats.syntax.option._
 import io.sherpair.w4s.auth.domain.{EmailType, Member, Token}
 import io.sherpair.w4s.config.Configuration
+import io.sherpair.w4s.domain.Logger
 import tsec.common.SecureRandomId
 
 abstract class MaybePostman(implicit C: Configuration) {
@@ -15,10 +17,15 @@ abstract class MaybePostman(implicit C: Configuration) {
 
   def sendEmail(token: Token, member: Member, emailType: EmailType): Option[String] = none[String]
 
+  protected def url(segment: String): String = s"${path}/${segment}"
+
   protected def url(segment: String, token: SecureRandomId): String = s"${path}/${segment}/${token}"
 }
 
-class Postman(smtp: Smtp, templates: Map[String, String])(implicit C: Configuration) extends MaybePostman {
+class Postman[F[_]](
+    smtp: Smtp, templates: Map[String, String])(
+    implicit C: Configuration, L: Logger[F]
+) extends MaybePostman {
 
   override def sendEmail(token: Token, member: Member, emailType: EmailType): Option[String] =
     templates.get(emailType.reason).fold(None) { template =>
@@ -28,7 +35,10 @@ class Postman(smtp: Smtp, templates: Map[String, String])(implicit C: Configurat
       message.setRecipients(RecipientType.TO, member.email);
       message.setSubject(emailType.reason)
       message.setContent(content(template, emailType, member, token), "text/html")
-      Transport.send(message)
+      val log = s"email to ${member}. Token's url was ${url(emailType.segment)}"
+      Either.catchNonFatal(Transport.send(message)).fold(
+        L.error(_)(s"While sending ${log}"), _ => L.info(s"Sent ${log}")
+      )
       None
     }
 

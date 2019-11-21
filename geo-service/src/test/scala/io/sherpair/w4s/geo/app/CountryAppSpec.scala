@@ -20,7 +20,7 @@ class CountryAppSpec extends GeoSpec with FakeAuth {
 
   "GET -> /geo/countries" should {
     "return the number of total, available and not-available-yet countries" in new IOengine {
-      val responseIO = withCountryAppRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/countries")))
+      val responseIO = withMemberRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/countries")))
 
       implicit val countryCountDecoder: EntityDecoder[IO, CountryCount] = jsonOf[IO, CountryCount]
 
@@ -39,7 +39,7 @@ class CountryAppSpec extends GeoSpec with FakeAuth {
   "GET -> /geo/country/{id}" should {
     "return 404 when the resource url is incomplete" in new IOengine {
       val response =
-        withCountryAppRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/country/"))).unsafeRunSync
+        withMemberRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/country/"))).unsafeRunSync
 
       response.status shouldBe Status.NotFound
     }
@@ -50,7 +50,7 @@ class CountryAppSpec extends GeoSpec with FakeAuth {
       val expectedCode = countryUnderTest.code
       val expectedName = countryUnderTest.name
 
-      val responseIO = withCountryAppRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/country/${expectedCode}")))
+      val responseIO = withMemberRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/country/${expectedCode}")))
 
       implicit val countryDecoder: EntityDecoder[IO, Country] = jsonOf[IO, Country]
 
@@ -66,14 +66,14 @@ class CountryAppSpec extends GeoSpec with FakeAuth {
 
   "GET -> /geo/country/{id}" should {
     "return \"NotFound\" if the request concerns an unknown country" in new IOengine {
-      val responseIO = withCountryAppRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/country/unknown")))
+      val responseIO = withMemberRoutes(Request[IO](GET, unsafeFromString(s"${C.root}/country/unknown")))
 
       val response = responseIO.unsafeRunSync
       response.status shouldBe Status.NotFound
     }
   }
 
-  def withCountryAppRoutes(
+  private def withMemberRoutes(
     request: Request[IO])(implicit CE: ConcurrentEffect[IO], E: Engine[IO]
   ): IO[Response[IO]] = {
 
@@ -84,7 +84,8 @@ class CountryAppSpec extends GeoSpec with FakeAuth {
       implicit0(engineOps: EngineOps[IO]) <- EngineOps[IO](C.clusterName)
       countriesCache <- engineOps.init
       cacheRef <- CacheRef[IO](countriesCache)
-      response <- Router((C.root, new CountryApp[IO](withMemberAuth, cacheRef, client).routes)).orNotFound.run(request)
+      authoriser = withMemberAuth[IO]
+      response <- Router((C.root, authoriser(new CountryApp[IO](cacheRef, client).routes))).orNotFound.run(request)
     } yield response
   }
 }

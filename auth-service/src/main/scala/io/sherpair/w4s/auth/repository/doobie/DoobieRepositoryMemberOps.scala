@@ -1,9 +1,13 @@
 package io.sherpair.w4s.auth.repository.doobie
 
 import cats.effect.Sync
+import cats.syntax.applicative._
+import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
+import cats.syntax.option._
 import doobie.syntax.connectionio._
 import doobie.syntax.stream._
+import doobie.util.invariant.UnexpectedEnd
 import doobie.util.transactor.Transactor
 import fs2.Stream
 import io.sherpair.w4s.auth.config.AuthConfig
@@ -50,8 +54,30 @@ private[doobie] class DoobieRepositoryMemberOps[F[_]](
   override def subset(order: String, limit: Long, offset: Long): Stream[F, Member] =
     subsetSql(order, offset, limit).stream.transact(tx)
 
-  override def update(id: Long, updateRequest: UpdateRequest): F[Int] =
-    updateSql(id, updateRequest).transact(tx)
+  override def update(id: Long, email: String): F[Option[Member]] =
+    updateEmailSql(id, email)
+      .withUniqueGeneratedKeys[Member](member: _*)
+      .map(_.some)
+      .transact(tx)
+      .recoverWith {
+        case UnexpectedEnd => none[Member].pure[F]
+      }
+
+  override def update(id: Long, secret: Array[Byte]): F[Int] =
+    Crypt.hashpw(secret) >>= {
+      updateSecretSql(id, _).run
+        .transact(tx)
+        .recoverWith {
+          case UnexpectedEnd => 0.pure[F]
+        }
+    }
+
+  override def update(id: Long, updateRequest: UpdateRequest): F[Option[Member]] =
+    updateSql(id, updateRequest)
+      .transact(tx)
+      .recoverWith {
+        case UnexpectedEnd => none[Member].pure[F]
+      }
 }
 
 object DoobieRepositoryMemberOps {

@@ -14,6 +14,7 @@ lazy val auth = (project in file("auth-service"))
   .dependsOn(shared % "compile -> compile; test -> test; it -> it")
   // .enablePlugins(GraalVMNativeImagePlugin)
   .enablePlugins(AshScriptPlugin, DockerPlugin, JavaAppPackaging)  // Alpine -> Ash Shell
+  .enablePlugins(DockerPlugin, JavaAppPackaging)
   .settings(commonSettings: _*)
   .settings(dockerSettings: _*)
   .settings(
@@ -30,6 +31,7 @@ lazy val geo = (project in file("geo-service"))
   .dependsOn(shared4e % "compile -> compile; test -> test")
   // .enablePlugins(GraalVMNativeImagePlugin)
   .enablePlugins(AshScriptPlugin, DockerPlugin, JavaAppPackaging)  // Alpine -> Ash Shell
+  .enablePlugins(DockerPlugin, JavaAppPackaging)
   .settings(commonSettings: _*)
   .settings(dockerSettings: _*)
   .settings(
@@ -42,6 +44,7 @@ lazy val loader = (project in file("loader-service"))
   .dependsOn(shared4e % "compile -> compile; test -> test")
   // .enablePlugins(GraalVMNativeImagePlugin)
   .enablePlugins(AshScriptPlugin, DockerPlugin, JavaAppPackaging)  // Alpine -> Ash Shell
+  .enablePlugins(DockerPlugin, JavaAppPackaging)
   .settings(commonSettings: _*)
   .settings(dockerSettings: _*)
   .settings(

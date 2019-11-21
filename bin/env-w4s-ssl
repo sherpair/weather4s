@@ -1,0 +1,10 @@
+#!/bin/bash
+
+export W4S_AUTH_HTTP_PORT=8442
+export W4S_AUTH_PLAIN_HTTP=false
+
+export W4S_GEO_HTTP_PORT=8443
+export W4S_GEO_PLAIN_HTTP=false
+
+export W4S_LOADER_HTTP_PORT=8444
+export W4S_LOADER_PLAIN_HTTP=false

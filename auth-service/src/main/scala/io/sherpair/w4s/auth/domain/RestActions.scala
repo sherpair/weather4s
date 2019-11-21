@@ -19,4 +19,6 @@ object MemberAction extends Enum[MemberAction] with CirceEnum[MemberAction] {
 
   case object MemberDelete extends MemberAction
   case object MemberUpdate extends MemberAction
+  case object UpdateEmail extends MemberAction
+  case object UpdateSecret extends MemberAction
 }

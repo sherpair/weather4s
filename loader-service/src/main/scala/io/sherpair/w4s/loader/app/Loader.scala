@@ -38,8 +38,8 @@ class Loader[F[_]: ContextShift: Sync](
 object Loader {
 
   def apply[F[_]: Concurrent: ContextShift](
-      blocker: Blocker, client: Client[F], queue: NoneTerminatedQueue[F, Country])(
-      implicit C: LoaderConfig, engineOps: EngineOps[F], L: Logger[F]
+      client: Client[F], queue: NoneTerminatedQueue[F, Country])(
+      implicit B: Blocker, C: LoaderConfig, engineOps: EngineOps[F], L: Logger[F]
   ): Resource[F, Fiber[F, Unit]] =
-    Resource.liftF(blocker.blockOn(new Loader[F](blocker, client, queue).start.start))
+    Resource.liftF(B.blockOn(new Loader[F](B, client, queue).start.start))
 }

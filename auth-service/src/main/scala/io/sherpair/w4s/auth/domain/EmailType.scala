@@ -8,10 +8,10 @@ object EmailType extends Enum[EmailType] with CirceEnum[EmailType] {
   val values = findValues
 
   case object Activation extends EmailType(
-    "Account activation", "account-activation", "templates/activation.html"
+    "Account activation", "account-activation", "activation.html"
   )
 
   case object ResetSecret extends EmailType(
-    "Reset password", "reset-secret", "templates/reset-secret.html"
+    "Reset password", "reset-secret", "reset-secret.html"
   )
 }

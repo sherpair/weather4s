@@ -7,7 +7,6 @@ case class UpdateRequest(
   accountId: String,
   firstName: String,
   lastName: String,
-  email: String,
   geoId: String,
   country: String,   // Country code,
 )

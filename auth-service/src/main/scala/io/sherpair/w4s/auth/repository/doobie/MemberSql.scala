@@ -3,6 +3,7 @@ package io.sherpair.w4s.auth.repository.doobie
 import java.time.Instant
 
 import cats.effect.Sync
+import cats.syntax.option._
 import doobie.{FC, Query0, Update0}
 import doobie.free.connection.ConnectionIO
 import doobie.postgres.implicits.pgEnumStringOpt
@@ -21,10 +22,11 @@ private[doobie] class MemberSql[F[_]: Sync](implicit C: AuthConfig) {
   implicit val hashMeta: Meta[PasswordHash[Crypt]] = PasswordHash.subst[Crypt](implicitly[Meta[String]])
   implicit val roleMeta: Meta[Role] = pgEnumStringOpt("role", Role.withNameOption, _.entryName)
 
-  val fields = fr"id, account_id, first_name, last_name, email, geo_id, country, active, role, created_at"
+  val member = IndexedSeq(
+    "id", "account_id", "first_name", "last_name", "email", "geo_id", "country", "active", "role", "created_at"
+  )
 
-  def changeSecretSql(member: Member, secret: PasswordHash[Crypt]): ConnectionIO[Int] =
-    sql"""UPDATE members SET secret = ${secret} WHERE id = ${member.id} AND active = TRUE""".update.run
+  val fields = fr"id, account_id, first_name, last_name, email, geo_id, country, active, role, created_at"
 
   /* Test-only */
   val countSql: Query0[Long] = sql"""SELECT COUNT(*) FROM members""".query
@@ -43,9 +45,6 @@ private[doobie] class MemberSql[F[_]: Sync](implicit C: AuthConfig) {
   def enableSql(id: Long): Update0 =
     sql"""UPDATE members SET active = TRUE WHERE id = ${id}""".update
 
-  def error(method: String, accountId: String, email: String): W4sError =
-    W4sError(s"(${method}) accountId(${accountId}) and/or email(${email}) already exist")
-
     def findSql(id: Long): Query0[Member] =
     (fr"SELECT" ++ fields ++ fr"FROM members" ++ fr"WHERE id = $id").query[Member]
 
@@ -60,7 +59,8 @@ private[doobie] class MemberSql[F[_]: Sync](implicit C: AuthConfig) {
     insertStmt(sr, secret)
       .withUniqueGeneratedKeys[(Long, Instant)]("id", "created_at")
       .attemptSomeSqlState {
-        case UNIQUE_VIOLATION => error("insert", sr.accountId, sr.email)
+        case UNIQUE_VIOLATION =>
+          W4sError(s"(insert) accountId(${sr.accountId}) and/or email(${sr.email}) already exist")
       }
       .flatMap {
         case Left(error) => FC.raiseError(error)
@@ -81,16 +81,22 @@ private[doobie] class MemberSql[F[_]: Sync](implicit C: AuthConfig) {
   def subsetSql(order: String, limit: Long, offset: Long): Query0[Member] =
     (fr"SELECT" ++ fields ++ fr"FROM members" ++ fr"ORDER BY $order LIMIT $limit OFFSET $offset").query[Member]
 
-  def updateSql(id: Long, ur: UpdateRequest): ConnectionIO[Int] =
+  def updateEmailSql(id: Long, email: String): Update0 =
+    sql"""UPDATE members SET email = ${email}, active = FALSE WHERE id = ${id} AND active = TRUE""".update
+
+  def updateSecretSql(id: Long, secret: PasswordHash[Crypt]): Update0 =
+    sql"""UPDATE members SET secret = ${secret} WHERE id = ${id} AND active = TRUE""".update
+
+  def updateSql(id: Long, ur: UpdateRequest): ConnectionIO[Option[Member]] =
     updateStmt(id, ur)
-      .run
-      .attemptSomeSqlState {
-        case UNIQUE_VIOLATION => error("update", ur.accountId, ur.email)
-      }
-      .flatMap {
-        case Left(error) => FC.raiseError(error)
-        case Right(result) => FC.pure(result)
-      }
+    .withUniqueGeneratedKeys[Member](member: _*)
+    .attemptSomeSqlState {
+      case UNIQUE_VIOLATION => W4sError(s"(update) accountId(${ur.accountId}) already exists")
+    }
+    .flatMap {
+      case Left(error) => FC.raiseError(error)
+      case Right(result) => FC.pure(result.some)
+    }
 
   def updateStmt(id: Long, ur: UpdateRequest): Update0 =
     sql"""
@@ -98,7 +104,6 @@ private[doobie] class MemberSql[F[_]: Sync](implicit C: AuthConfig) {
         account_id = ${ur.accountId},
         first_name = ${ur.firstName},
         last_name = ${ur.lastName},
-        email = ${ur.email},
         geo_id = ${ur.geoId},
         country = ${ur.country}
       WHERE id = ${id}

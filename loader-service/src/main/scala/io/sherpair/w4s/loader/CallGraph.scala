@@ -1,13 +1,11 @@
 package io.sherpair.w4s.loader
 
-import java.util.concurrent.{Executors, ExecutorService}
-
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
 
 import cats.effect.{Blocker, ConcurrentEffect => CE, ContextShift => CS, Resource, Timer}
 import fs2.concurrent.Queue
-import io.sherpair.w4s.domain.{Country, Logger}
+import io.sherpair.w4s.domain.{blockerForIOtasks, Country, Logger}
 import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.http.{maybeWithSSLContext, HttpServer}
 import io.sherpair.w4s.loader.app.{Loader, Routes}
@@ -21,19 +19,17 @@ object CallGraph {
 
   type CallGraphRes[F[_]] = Resource[F, Server[F]]
 
-  def apply[F[_]: CE: CS: Timer](
-      engineR: Resource[F, Engine[F]])(
-      implicit C: LoaderConfig, L: Logger[F]
-  ): CallGraphRes[F] =
+  def apply[F[_]: CE: CS: Logger: Timer](engineR: Resource[F, Engine[F]])(implicit C: LoaderConfig): CallGraphRes[F] =
     for {
       implicit0(engine: Engine[F]) <- engineR
       implicit0(engineOps: EngineOps[F]) <- Resource.liftF(EngineOps[F](C.clusterName))
       _ <- Resource.make(engineOps.init)(_ => engineOps.close)
 
+      implicit0(blocker: Blocker) <- blockerForIOtasks
+
       countryQueue <- Resource.liftF(Queue.boundedNoneTerminated[F, Country](C.maxEnqueuedCountries))
-      blocker <- blocker[F]
       client <- blazeClient
-      loaderFiber <- Loader(blocker, client, countryQueue)
+      loaderFiber <- Loader(client, countryQueue)
 
       routes <- Routes[F](countryQueue, loaderFiber)
       sslContextO <- maybeWithSSLContext[F]
@@ -46,16 +42,4 @@ object CallGraph {
         .withConnectTimeout(40 seconds)
         .withRequestTimeout(40 seconds)
         .resource
-
-    private def blocker[F[_]: CE]: Resource[F, Blocker] = {
-      val es: ExecutorService = Executors.newSingleThreadExecutor(
-        (r: Runnable) => {
-          val thread = new Thread(r, "loader-blocker")
-          thread.setDaemon(false)
-          thread
-        }
-      )
-
-      Blocker.fromExecutorService(CE[F].delay(es))
-    }
 }

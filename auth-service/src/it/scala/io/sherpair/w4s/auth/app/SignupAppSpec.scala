@@ -23,11 +23,7 @@ class SignupAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
     "return 400 when the request is malformed" in  {
       val response = DoobieRepository[IO].use { implicit DR =>
         DR.memberRepositoryOps >>= { implicit RM =>
-
-          withAuthAppRoutes(
-            withoutPostman,
-            Request[IO](POST, unsafeFromString(s"${aC.root}/signup"))
-          )
+          withAuthAppRoutes(Request[IO](POST, unsafeFromString(s"${aC.root}/signup")))
         }
       }.unsafeRunSync
 
@@ -45,10 +41,9 @@ class SignupAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
 
           RM.empty >>
             RM.insert(signupRequest0) >>
-            withAuthAppRoutes(
-              withoutPostman,
-              Request[IO](POST, unsafeFromString(s"${aC.root}/signup")).withEntity(signupRequest1)
-            )
+              withAuthAppRoutes(
+                Request[IO](POST, unsafeFromString(s"${aC.root}/signup")).withEntity(signupRequest1)
+              )
         }
       }.unsafeRunSync
 
@@ -66,10 +61,9 @@ class SignupAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
 
           RM.empty >>
             RM.insert(signupRequest0) >>
-            withAuthAppRoutes(
-              withoutPostman,
-              Request[IO](POST, unsafeFromString(s"${aC.root}/signup")).withEntity(signupRequest1)
-            )
+              withAuthAppRoutes(
+                Request[IO](POST, unsafeFromString(s"${aC.root}/signup")).withEntity(signupRequest1)
+              )
         }
       }.unsafeRunSync
 
@@ -83,7 +77,6 @@ class SignupAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
         DR.memberRepositoryOps >>= { implicit RM =>
           RM.empty >>
             withAuthAppRoutes(
-              withoutPostman,
               Request[IO](POST, unsafeFromString(s"${aC.root}/signup")).withEntity(genSignupRequest)
             )
         }
@@ -113,8 +106,8 @@ class SignupAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
         DR.memberRepositoryOps >>= { implicit RM =>
           RM.empty >>
             withAuthAppRoutes(
-              postman,
-              Request[IO](POST, unsafeFromString(s"${aC.root}/signup")).withEntity(genSignupRequest)
+              Request[IO](POST, unsafeFromString(s"${aC.root}/signup")).withEntity(genSignupRequest),
+              postman
             )
         }
       }.unsafeRunSync
@@ -128,11 +121,7 @@ class SignupAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
     "return 404 when the resource url is incomplete" in  {
       val response = DoobieRepository[IO].use { implicit DR =>
         DR.memberRepositoryOps >>= { implicit RM =>
-
-          withAuthAppRoutes(
-            withoutPostman,
-            Request[IO](GET, unsafeFromString(s"${aC.root}/${Activation.segment}/"))
-          )
+          withAuthAppRoutes(Request[IO](GET, unsafeFromString(s"${aC.root}/${Activation.segment}/")))
         }
       }.unsafeRunSync
 
@@ -144,9 +133,7 @@ class SignupAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
     "return 404 when the endpoint is reached by the wrong method" in  {
       val response = DoobieRepository[IO].use { implicit DR =>
         DR.memberRepositoryOps >>= { implicit RM =>
-
           withAuthAppRoutes(
-            withoutPostman,
             Request[IO](POST, unsafeFromString(s"${aC.root}/${Activation.segment}/1234567890"))
           )
         }
@@ -162,7 +149,6 @@ class SignupAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
         DR.memberRepositoryOps >>= { implicit RM =>
           RM.empty >>
             withAuthAppRoutes(
-              withoutPostman,
               Request[IO](GET, unsafeFromString(s"${aC.root}/${Activation.segment}/1234567890"))
             )
         }
@@ -177,11 +163,8 @@ class SignupAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
       // scalastyle:off
       var actualToken: Option[Token] = None
       // scalastyle:on
-      val postman: MaybePostman = new MaybePostman {
-        override def sendEmail(token: Token, member: Member, emailType: EmailType): Option[String] = {
-          actualToken = token.some
-          url(emailType.segment, token.tokenId).some
-        }
+      val postman = new PostmanFixture {
+        override val expectedToken = token => actualToken = token.some
       }
 
       val (member, resp1, resp2) = DoobieRepository[IO].use { implicit DR =>
@@ -189,11 +172,13 @@ class SignupAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
 
           for {
             _ <- RM.empty
-            resp1 <- withAuthAppRoutes(postman,
-              Request[IO](POST, unsafeFromString(s"${aC.root}/signup")).withEntity(genSignupRequest)
+            resp1 <- withAuthAppRoutes(
+              Request[IO](POST, unsafeFromString(s"${aC.root}/signup")).withEntity(genSignupRequest),
+              postman
             )
-            resp2 <- withAuthAppRoutes(postman,
-              Request[IO](GET, unsafeFromString(s"${aC.root}/${Activation.segment}/${actualToken.value.tokenId}"))
+            resp2 <- withAuthAppRoutes(
+              Request[IO](GET, unsafeFromString(s"${aC.root}/${Activation.segment}/${actualToken.value.tokenId}")),
+              postman
             )
             member <- RM.find(actualToken.value.memberId)
           }
