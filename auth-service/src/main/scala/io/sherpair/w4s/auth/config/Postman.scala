@@ -1,5 +1,6 @@
 package io.sherpair.w4s.auth.config
 
+import java.net.InetAddress
 import javax.mail.{Session, Transport}
 import javax.mail.Message.RecipientType
 import javax.mail.internet.MimeMessage
@@ -13,13 +14,15 @@ import tsec.common.SecureRandomId
 
 abstract class MaybePostman(implicit C: Configuration) {
 
-  lazy val path = s"${C.plainHttp.fold("https")(if (_) "http" else "https")}://${C.host.joined}${C.root}"
+  lazy val path = s"${C.plainHttp.fold("https")(if (_) "http" else "https")}://${host}${C.root}"
 
   def sendEmail(token: Token, member: Member, emailType: EmailType): Option[String] = none[String]
 
   protected def url(segment: String): String = s"${path}/${segment}"
 
   protected def url(segment: String, token: SecureRandomId): String = s"${path}/${segment}/${token}"
+
+  private val host: String = s"${InetAddress.getLocalHost.getHostAddress}:${C.host.port}"
 }
 
 class Postman[F[_]](

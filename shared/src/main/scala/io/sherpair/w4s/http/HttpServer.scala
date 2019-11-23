@@ -13,10 +13,10 @@ import org.http4s.syntax.kleisli._
 object HttpServer {
 
   def apply[F[_]: ConcurrentEffect: ContextShift: Timer](
-      routes: HttpRoutes[F], sslContextO: Option[SSLContext] = None)(implicit C: Configuration
+      routes: HttpRoutes[F], sslContextO: Option[SSLContext])(implicit C: Configuration
   ): Resource[F, Server[F]] = {
 
-    val blazeBuilder: BlazeServerBuilder[F] = sslContextO.fold {
+    val serverBuilder: BlazeServerBuilder[F] = sslContextO.fold {
 
       BlazeServerBuilder[F]
         .bindHttp(C.host.port, C.host.address)
@@ -29,7 +29,7 @@ object HttpServer {
         .enableHttp2(true)
     }
 
-    blazeBuilder
+    serverBuilder
       .withConnectorPoolSize(C.httpPoolSize)
       .withHttpApp(withMiddleware[F](Router((C.root, routes))))
       .resource

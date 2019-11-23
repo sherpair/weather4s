@@ -21,30 +21,30 @@ The project also pretends to be opinionated, in some way, as it should
 
 ### Microservices
 
-- **Loader**. Operates only upon a user request, sent via **Geo**. An architectural choice was to feed ElasticSearch with localities only when the user expressly asks
-  to make a specific country available for weather queries. When this happens and as long as the country's localities are not already present in the engine, the service
-  downloads the related CSV file from [geonames](http://download.geonames.org/export/dump/), transforms it and adds all resulting localities to the engine in a new
-  "country" engine index.
+- **Loader**. Operates only upon a user request, sent via **Geo**. An architectural choice was to feed ElasticSearch (the engine) with localities only when the user expressly
+  asks to make a specific country available for weather queries. When this happens and as long as the country's localities are not already present in the engine, the service
+  downloads the related CSV file from [geonames](http://download.geonames.org/export/dump/), transforms it and adds all localities resulting from the process to the engine in
+  a "new country" engine index (e.g. **GB** for United Kingdom, **IT** for Italy, ...).
 
-  Only if the process is successful the **countries** engine index gets updated, with the document of the "new" country set as *available*. **Geo** is notified that one
-  country is now available only after **Loader** updates the **meta** engine index, which acts as a trigger (ElasticSearch doesn't provide a "transaction-like" mechanism),
-  and anyhow only at the next iteration of the "CacheHandler" in **Geo** which, after noticed the **meta** document was updated, makes the country visible to the user as
-  a last step .
+  Only if the process is successful the **countries** engine index gets updated, with the document of the "new country" set as *available*. **Geo** is notified that one
+  country is now available only after **Loader** updates the **meta** engine index, which acts as a trigger (ElasticSearch doesn't provide a transaction-like mechanism),
+  and in any case only at the next iteration of the "CacheHandler" in **Geo** which, after noticed the **meta** document was updated, makes the country visible to the user
+  as a last step.
 
 - **Geo**. Aside from user authentication, handled by **Auth**, **Geo** is the main backend interface for the frontend to which it provides the list of available and
-  non-available-yet countries, as well as the list of suggestions while the user types the name of the locality she is looking the weather info for.
+  *non-available-yet* countries, as well as the list of suggestions while the user types the name of the locality she is looking the weather info for.
 
   It is also responsible for the initialization of the engine, in which it persists, at the first launch of Weather4s, the list of all countries in the world, marked as
   *not-available-yet*, as well as the **meta** document (in a specific engine index).
 
-- **Auth** (*In the works now!*). As expected, **Auth** handles all aspects of user management. From registration via email activation to authentication, to the
-  management of the profile, used by **Geo** to show the weather of the landing locality, chosen by the user during the registration, every time she logs in.
+- **Auth**. As expected, **Auth** handles all aspects of user management. From registration via email activation to authentication, to the management of the profile, used
+  by **Geo** to show the weather of the landing locality, chosen by the user during the registration, every time she logs in.
 
 ### Frontend
 
-**TBD** ... in truth, I already have a working prototype, but it's in Typescript/React. I won't use that, then. Plan is to only use FP Scala, accordingly
-the last step will be to write the frontend using Scala.js. Still, it should more or less draws on the same ideas, style and functionalities of the former implementation,
-as shown in [this screenshot](docs/screenshot.png), with the addition of user login/profile/registration pages.
+**TBD** ... in truth, I already have a working prototype, but it's in Typescript/React. I won't use that, then. Plan is to only use FP Scala, accordingly the last step
+will be to write the frontend using Scala.js. Still, it should more or less draw on the same ideas, style and functionalities of the former implementation, as shown in
+[this screenshot](docs/screenshot.png), with the addition of user signup/signin/profile pages.
 
 ### Requirements
 
@@ -52,6 +52,14 @@ as shown in [this screenshot](docs/screenshot.png), with the addition of user lo
 - scala 2.13+
 - sbt 1.3+
 - docker 19+
+
+In addition, the script to generate a self-signed certificate
+
+```shell
+$ bin/gen-self-signed-certs.sh
+```
+
+requires *openssl* and *bash*. Note that it has to be executed at least once before building the docker images.
 
 ### Build
 
@@ -72,6 +80,8 @@ $ sbt "project loader" ";test; it:test"
 ```
 
 ## Running Weather4s
+
+(Note that all scripts in the bin directory leverage some specific *bash*'s features)
 
 ```shell
 $ ./bin/start-w4s.sh
@@ -97,11 +107,30 @@ $ http --verify no https://0.0.0.0:8442/auth/health
 $ http --verify no https://0.0.0.0:8443/geo/health
 $ http --verify no https://0.0.0.0:8444/loader/health
 ```
+Note however that these endpoints are only reachable by users with "*Master*" role.
 
 #### Configuration
 
 All Weather4s' configuration properties can be found in **env-w4s**, **env-w4s-ssl** and **env-w4s-secrets**
 under the **bin/** directory.
+
+While *env-w4s* and *env-w4s-ssl* are already provided and do not need any modification (but they can be of
+course customized by need), *env-w4s-secrets* must be created before launching Weather4s. This is an example
+of what it should contain:
+```shell
+#!/bin/sh
+
+export W4S_DB_NAME=w4s
+export W4S_DB_USER=w4s
+export W4S_DB_SECRET=w4s123456
+
+export W4S_AUTH_SMTP_ADDRESS=smtp.gmail.com                # your SMTP server
+export W4S_AUTH_SMTP_PORT=587                              # your SMTP server's port
+export W4S_AUTH_SMTP_USER=<your email account>@gmail.com
+export W4S_AUTH_SMTP_SECRET=<your email secret>
+
+export W4S_KEY_STORE_SECRET=w4s123456         # used by bin/gen-self-signed-certs.sh
+```
 
 #### Running a single microservice
 

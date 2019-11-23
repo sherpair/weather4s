@@ -71,13 +71,10 @@ object Dependencies {
   )
 
   lazy val http4s = Seq(
+    "org.http4s" %% "http4s-blaze-client" % version.http4s,
     "org.http4s" %% "http4s-blaze-server" % version.http4s,
     "org.http4s" %% "http4s-circe" % version.http4s,
     "org.http4s" %% "http4s-dsl" % version.http4s
-  )
-
-  lazy val http4sClient = Seq(
-    "org.http4s" %% "http4s-blaze-client" % version.http4s
   )
 
   lazy val javamail = Seq(

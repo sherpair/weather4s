@@ -10,7 +10,6 @@ import scala.util.Try
 
 import cats.effect.{Blocker, ContextShift => CS, Resource, Sync}
 import cats.syntax.apply._
-import cats.syntax.applicative._
 import fs2.io.readInputStream
 import io.chrisdavenport.log4cats.SelfAwareStructuredLogger
 import io.circe.{Json, Printer}

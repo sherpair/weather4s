@@ -26,7 +26,7 @@ class Loader[F[_]](
     L.info(s"""Sending request "Loading ${country}" to ${loaderUrl}""") *>
       // Idempotent PUT.
       client.fetch(
-        addBearerTokenToRequest(Request[F](PUT, uri).withEntity(country.asJson), token)
+        addBearerTokenToRequest(Request[F](PUT, uri).withEntity(country.asJson).withHeaders(), token)
       )(CE.delay(_))
 
   private def logUriError(failure: ParseFailure): F[Response[F]] =

@@ -4,7 +4,12 @@ import io.circe.{Decoder, Encoder}
 import io.circe.derivation.{deriveDecoder, deriveEncoder}
 
 case class SSLData(
-  algorithm: String, keyStore: String, randomAlgorithm: String, secret: String, `type`: String
+  algorithm: String,
+  keyStore: String,
+  randomAlgorithm: String,
+  secret: String,
+  trustStore: String,
+  `type`: String
 )
 
 object SSLData {

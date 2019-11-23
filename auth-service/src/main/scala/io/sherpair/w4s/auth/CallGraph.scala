@@ -18,8 +18,8 @@ object CallGraph {
       _ <- Resource.liftF(repository.init)
 
       routes <- Routes[F]
-      sslContextO <- maybeWithSSLContext[F]
-      server <- HttpServer[F](routes, sslContextO)
+      sslContextO <- maybeWithSSLContext
+      server <- HttpServer(routes, sslContextO)
     }
     yield server
 }

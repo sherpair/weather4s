@@ -23,8 +23,8 @@ class AuthApp[F[_]: Sync](
 
   implicit val passwordHasher: PasswordHasher[F, Crypt] = Crypt.syncPasswordHasher
 
-  implicit val loginDecoder: EntityDecoder[F, MemberRequest] = jsonOf
-  implicit val registrationDecoder: EntityDecoder[F, SignupRequest] = jsonOf
+  implicit val memberRequestDecoder: EntityDecoder[F, MemberRequest] = jsonOf
+  implicit val signupRequestDecoder: EntityDecoder[F, SignupRequest] = jsonOf
 
   val routes: HttpRoutes[F] = HttpRoutes.of[F] {
     case            GET -> Root / "account-activation" / tokenId => activation(tokenId)

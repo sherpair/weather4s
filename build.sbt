@@ -36,8 +36,7 @@ lazy val geo = (project in file("geo-service"))
   .settings(dockerSettings: _*)
   .settings(
     name := "geo-service",
-    mainClass in Compile := Some("io.sherpair.w4s.geo.Main"),
-    libraryDependencies ++= http4sClient
+    mainClass in Compile := Some("io.sherpair.w4s.geo.Main")
   )
 
 lazy val loader = (project in file("loader-service"))
@@ -49,8 +48,7 @@ lazy val loader = (project in file("loader-service"))
   .settings(dockerSettings: _*)
   .settings(
     name := "loader-service",
-    mainClass in Compile := Some("io.sherpair.w4s.loader.Main"),
-    libraryDependencies ++= http4sClient
+    mainClass in Compile := Some("io.sherpair.w4s.loader.Main")
   )
 
 lazy val shared = (project in file("shared"))
