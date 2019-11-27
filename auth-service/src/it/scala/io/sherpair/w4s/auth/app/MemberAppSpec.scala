@@ -32,12 +32,13 @@ class MemberAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
 
       val response = DoobieRepository[IO].use { implicit R =>
         R.memberRepositoryOps >>= { implicit RM =>
-          RM.empty >> RM.insert(signupRequest) >>= { member =>
-            withMemberAppRoutes(
-              withMasterAuth[IO],
-              Request[IO](GET, unsafeFromString(s"${aC.root}/member/${member.id}"))
-            )
-          }
+          RM.empty >>
+            RM.insert(signupRequest) >>= { member =>
+              withMemberAppRoutes(
+                withMasterAuth[IO],
+                Request[IO](GET, unsafeFromString(s"${aC.root}/member/${member.id}"))
+              )
+            }
         }
       }.unsafeRunSync
 
@@ -124,17 +125,18 @@ class MemberAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
 
       val (response, memberO) = DoobieRepository[IO].use { implicit R =>
         R.memberRepositoryOps >>= { implicit RM =>
-          RM.empty >> RM.insert(genSignupRequest) >>= { m =>
-            RM.enable(m.id) >>
-              withMemberAppRoutes(
-                withMemberAuth[IO](m.id),
-                Request[IO](PUT, unsafeFromString(s"${aC.root}/member/${m.id}")).withEntity(
-                  UpdateRequest(expAccountId, m.firstName, m.lastName, m.geoId, m.country)
-                )
-              ) >>= {
-              response => (IO(response), RM.find(m.id)).tupled
+          RM.empty >>
+            RM.insert(genSignupRequest) >>= { m =>
+              RM.enable(m.id) >>
+                withMemberAppRoutes(
+                  withMemberAuth[IO](m.id),
+                  Request[IO](PUT, unsafeFromString(s"${aC.root}/member/${m.id}")).withEntity(
+                    UpdateRequest(expAccountId, m.firstName, m.lastName, m.geoId, m.country)
+                  )
+                ) >>= {
+                response => (IO(response), RM.find(m.id)).tupled
+              }
             }
-          }
         }
       }.unsafeRunSync
 
@@ -149,18 +151,45 @@ class MemberAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
     "return NotFound when trying to update an existing inactive member" in  {
       val response = DoobieRepository[IO].use { implicit R =>
         R.memberRepositoryOps >>= { implicit RM =>
-          RM.empty >> RM.insert(genSignupRequest) >>= { m =>
-            withMemberAppRoutes(
-              withMemberAuth[IO](m.id),
-              Request[IO](PUT, unsafeFromString(s"${aC.root}/member/${m.id}")).withEntity(
-                UpdateRequest(alpha, m.firstName, m.lastName, m.geoId, m.country)
+          RM.empty >>
+            RM.insert(genSignupRequest) >>= { m =>
+              withMemberAppRoutes(
+                withMemberAuth[IO](m.id),
+                Request[IO](PUT, unsafeFromString(s"${aC.root}/member/${m.id}")).withEntity(
+                  UpdateRequest(alpha, m.firstName, m.lastName, m.geoId, m.country)
+                )
               )
-            )
-          }
+            }
         }
       }.unsafeRunSync
 
       response.status shouldBe Status.NotFound
+    }
+  }
+
+  "PUT -> /auth/member/{id}" should {
+    "return Conflict when trying to update a member's accountId with an accountId already used by another member" in  {
+      val response = DoobieRepository[IO].use { implicit R =>
+        R.memberRepositoryOps >>= { implicit RM =>
+
+          val sr0 = genSignupRequest
+          val sr1 = genSignupRequest
+
+          RM.empty >>
+            RM.insert(sr0) >>
+              RM.insert(sr1) >>= { m1 =>
+                RM.enable(m1.id) >>
+                  withMemberAppRoutes(
+                    withMemberAuth[IO](m1.id),
+                    Request[IO](PUT, unsafeFromString(s"${aC.root}/member/${m1.id}")).withEntity(
+                      UpdateRequest(sr0.accountId, sr1.firstName, sr1.lastName, sr1.geoId, sr1.country)
+                    )
+                  )
+              }
+        }
+      }.unsafeRunSync
+
+      response.status shouldBe Status.Conflict
     }
   }
 
@@ -177,18 +206,19 @@ class MemberAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
 
       val (response, memberO) = DoobieRepository[IO].use { implicit R =>
         R.memberRepositoryOps >>= { implicit RM =>
-          RM.empty >> RM.insert(genSignupRequest) >>= { m =>
-            RM.enable(m.id) >>
-              withMemberAppRoutes(
-                withMemberAuth[IO](m.id),
-                Request[IO](POST, unsafeFromString(s"${aC.root}/email/${m.id}")).withEntity(
-                  MemberRequest(expectedEmail, Array.empty)
-                ),
-                postman
-              ) >>= {
-              response => (IO(response), RM.find(m.id)).tupled
+          RM.empty >>
+            RM.insert(genSignupRequest) >>= { m =>
+              RM.enable(m.id) >>
+                withMemberAppRoutes(
+                  withMemberAuth[IO](m.id),
+                  Request[IO](POST, unsafeFromString(s"${aC.root}/email/${m.id}")).withEntity(
+                    MemberRequest(expectedEmail, Array.empty)
+                  ),
+                  postman
+                ) >>= {
+                response => (IO(response), RM.find(m.id)).tupled
+              }
             }
-          }
         }
       }.unsafeRunSync
 
@@ -205,18 +235,44 @@ class MemberAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
     "return NotFound when trying to update an existing inactive member's email" in  {
       val response = DoobieRepository[IO].use { implicit R =>
         R.memberRepositoryOps >>= { implicit RM =>
-          RM.empty >> RM.insert(genSignupRequest) >>= { m =>
-            withMemberAppRoutes(
-              withMemberAuth[IO](m.id),
-              Request[IO](POST, unsafeFromString(s"${aC.root}/email/${m.id}")).withEntity(
-                MemberRequest(email("sherpair.io"), Array.empty)
+          RM.empty >>
+            RM.insert(genSignupRequest) >>= { m =>
+              withMemberAppRoutes(
+                withMemberAuth[IO](m.id),
+                Request[IO](POST, unsafeFromString(s"${aC.root}/email/${m.id}")).withEntity(
+                  MemberRequest(email("sherpair.io"), Array.empty)
+                )
               )
-            )
-          }
+            }
         }
       }.unsafeRunSync
 
       response.status shouldBe Status.NotFound
+    }
+  }
+
+  "POST -> /auth/email/{id}" should {
+    "return Conflict when trying to update a member's email with an email already used by another member" in  {
+      val response = DoobieRepository[IO].use { implicit R =>
+        R.memberRepositoryOps >>= { implicit RM =>
+
+          val signupRequest0 = genSignupRequest
+
+          RM.empty >>
+            RM.insert(signupRequest0) >>
+              RM.insert(genSignupRequest) >>= { m1 =>
+                RM.enable(m1.id) >>
+                  withMemberAppRoutes(
+                    withMemberAuth[IO](m1.id),
+                    Request[IO](POST, unsafeFromString(s"${aC.root}/email/${m1.id}")).withEntity(
+                      MemberRequest(signupRequest0.email, Array.empty)
+                    )
+                  )
+              }
+        }
+      }.unsafeRunSync
+
+      response.status shouldBe Status.Conflict
     }
   }
 
@@ -226,21 +282,22 @@ class MemberAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
 
       val response = DoobieRepository[IO].use { implicit R =>
         R.memberRepositoryOps >>= { implicit RM =>
-          RM.empty >> RM.insert(genSignupRequest) >>= { m =>
-            RM.enable(m.id) >>
-              withMemberAppRoutes(
-                withMemberAuth[IO](m.id),
-                Request[IO](POST, unsafeFromString(s"${aC.root}/secret/${m.id}")).withEntity(
-                  MemberRequest("", expectedSecret)
-                )
-              ) >>= { response =>
-                if (response.status != Status.NoContent) response.pure[IO]
-                else withAuthAppRoutes(
-                  Request[IO](POST, unsafeFromString(s"${aC.root}/signin"))
-                    .withEntity(MemberRequest(m.accountId, expectedSecret))
-                )
+          RM.empty >>
+            RM.insert(genSignupRequest) >>= { m =>
+              RM.enable(m.id) >>
+                withMemberAppRoutes(
+                  withMemberAuth[IO](m.id),
+                  Request[IO](POST, unsafeFromString(s"${aC.root}/secret/${m.id}")).withEntity(
+                    MemberRequest("", expectedSecret)
+                  )
+                ) >>= { response =>
+                  if (response.status != Status.NoContent) response.pure[IO]
+                  else withAuthAppRoutes(
+                    Request[IO](POST, unsafeFromString(s"${aC.root}/signin"))
+                      .withEntity(MemberRequest(m.accountId, expectedSecret))
+                  )
+              }
             }
-          }
         }
       }.unsafeRunSync
 
@@ -252,14 +309,15 @@ class MemberAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
     "return NotFound when trying to update an existing inactive member's secret" in  {
       val response = DoobieRepository[IO].use { implicit R =>
         R.memberRepositoryOps >>= { implicit RM =>
-          RM.empty >> RM.insert(genSignupRequest) >>= { m =>
-            withMemberAppRoutes(
-              withMemberAuth[IO](m.id),
-              Request[IO](POST, unsafeFromString(s"${aC.root}/secret/${m.id}")).withEntity(
-                MemberRequest("", unicodeStr(16).getBytes(UTF_8))
+          RM.empty >>
+            RM.insert(genSignupRequest) >>= { m =>
+              withMemberAppRoutes(
+                withMemberAuth[IO](m.id),
+                Request[IO](POST, unsafeFromString(s"${aC.root}/secret/${m.id}")).withEntity(
+                  MemberRequest("", unicodeStr(16).getBytes(UTF_8))
+                )
               )
-            )
-          }
+            }
         }
       }.unsafeRunSync
 
@@ -271,14 +329,15 @@ class MemberAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
     "delete a member given an existing member-id and return NoContent" in  {
       val (response, memberO) = DoobieRepository[IO].use { implicit R =>
         R.memberRepositoryOps >>= { implicit RM =>
-          RM.empty >> RM.insert(genSignupRequest) >>= { member =>
-            withMemberAppRoutes(
-              withMemberAuth[IO](member.id),
-              Request[IO](DELETE, unsafeFromString(s"${aC.root}/member/${member.id}"))
-            ) >>= {
-              response => (IO(response), RM.find(member.id)).tupled
+          RM.empty >>
+            RM.insert(genSignupRequest) >>= { member =>
+              withMemberAppRoutes(
+                withMemberAuth[IO](member.id),
+                Request[IO](DELETE, unsafeFromString(s"${aC.root}/member/${member.id}"))
+              ) >>= {
+                response => (IO(response), RM.find(member.id)).tupled
+              }
             }
-          }
         }
       }.unsafeRunSync
 

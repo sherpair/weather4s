@@ -12,7 +12,7 @@ import io.sherpair.w4s.domain.{ClaimContent, Country, CountryCount, Logger}
 import io.sherpair.w4s.geo.cache.CacheRef
 import io.sherpair.w4s.geo.config.GeoConfig
 import io.sherpair.w4s.geo.http.Loader
-import io.sherpair.w4s.http.MT
+import io.sherpair.w4s.http.JsonMT
 import io.sherpair.w4s.types.Countries
 import org.http4s.{AuthedRoutes, EntityEncoder, Request, Response}
 import org.http4s.circe._
@@ -37,8 +37,8 @@ class CountryApp[F[_]](
   val routes: AuthedRoutes[ClaimContent, F] =
     AuthedRoutes.of[ClaimContent, F] {
       case GET -> Root / "countries" as _ => Ok(count)
-      case GET -> Root / "countries" / "available" as _ => Ok(availableCountries, MT)
-      case GET -> Root / "countries" / "not-available-yet" as _ => Ok(countriesNotAvailableYet, MT)
+      case GET -> Root / "countries" / "available" as _ => Ok(availableCountries, JsonMT)
+      case GET -> Root / "countries" / "not-available-yet" as _ => Ok(countriesNotAvailableYet, JsonMT)
       case GET -> Root / "country" / id as _ => findCountry(id) >>= { _.fold(unknown(id))(Ok(_)) }
 
       case GET -> Root / "localities" / id as _ => findCountry(id) >>= {

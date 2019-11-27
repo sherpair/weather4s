@@ -1,5 +1,6 @@
 package io.sherpair.w4s
 
+import java.net.InetAddress
 import java.security.{KeyStore, SecureRandom}
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 
@@ -16,6 +17,7 @@ import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import io.sherpair.w4s.config.{Configuration, SSLData}
 import io.sherpair.w4s.domain.Logger
+import org.http4s.Charset.`UTF-8`
 import org.http4s.MediaType
 import org.http4s.client.Client
 import org.http4s.client.blaze.BlazeClientBuilder
@@ -24,7 +26,8 @@ import org.http4s.headers.`Content-Type`
 
 package object http {
 
-  val MT: `Content-Type` = `Content-Type`(MediaType.application.json)
+  lazy val JsonMT: `Content-Type` = `Content-Type`(MediaType.application.json, `UTF-8`)
+  lazy val YamlMT: `Content-Type` = `Content-Type`(MediaType.text.yaml, `UTF-8`)
 
   def arrayOf[F[_], T](stream: Stream[F, T])(implicit encoder: Encoder[T]): Stream[F, String] =
     Stream("[") ++ stream.map(_.asJson.noSpaces).intersperse(",") ++ Stream("]")
@@ -43,6 +46,11 @@ package object http {
           L.info(s"Plain HTTP (no HTTPS!!) for ${C.service}") *> S.pure(none[SSLContext])
         )
     }
+
+  def serverRoot(implicit C: Configuration): String = {
+    val serverAddress = s"${InetAddress.getLocalHost.getHostAddress}:${C.host.port}"
+    s"${C.plainHttp.fold("https")(if (_) "http" else "https")}://${serverAddress}${C.root}"
+  }
 
   def withClientMiddleware[F[_]: CE](client: Client[F])(implicit L: Logger[F]): Resource[F, Client[F]] =
     Resource.liftF(

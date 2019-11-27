@@ -11,12 +11,10 @@ import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
 import doobie.syntax.applicativeerror._
 import doobie.syntax.string._
 import doobie.util.Meta
-import io.sherpair.w4s.auth.config.AuthConfig
-import io.sherpair.w4s.auth.domain.{Member, Token}
-import io.sherpair.w4s.domain.W4sError
+import io.sherpair.w4s.auth.domain.{Member, Token, UniqueViolation}
 import tsec.common.SecureRandomId
 
-private[doobie] class TokenSql[F[_]: Sync](implicit C: AuthConfig) {
+private[doobie] class TokenSql[F[_]: Sync] {
 
   implicit val sridMeta: Meta[SecureRandomId] =
     Meta[String].timap(_.asInstanceOf[SecureRandomId])(_.toString)
@@ -39,8 +37,8 @@ private[doobie] class TokenSql[F[_]: Sync](implicit C: AuthConfig) {
   /* Test-only */
   val emptySql: Update0 = sql"""TRUNCATE TABLE tokens""".update
 
-  def error(method: String, token: Token): W4sError =
-    W4sError(s"(${method}) token(${token.id}) already exists (Member is ${token.memberId})")
+  def error(token: Token): UniqueViolation =
+    UniqueViolation(s"token(${token.id}) already used for Member(${token.memberId})")
 
   def findSql(id: Long): Query0[Token] = sql"""SELECT * FROM tokens WHERE id = $id""".query[Token]
 
@@ -51,7 +49,7 @@ private[doobie] class TokenSql[F[_]: Sync](implicit C: AuthConfig) {
     insertStmt(token)
       .withUniqueGeneratedKeys[(Long, Instant)]("id", "created_at")
       .attemptSomeSqlState {
-        case UNIQUE_VIOLATION => error("insert", token)
+        case UNIQUE_VIOLATION => error(token)
       }
       .flatMap {
         case Left(error) => FC.raiseError(error)

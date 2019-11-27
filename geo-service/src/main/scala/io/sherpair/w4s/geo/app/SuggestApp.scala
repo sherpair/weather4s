@@ -10,7 +10,7 @@ import io.sherpair.w4s.domain.{Analyzer => DefaultAnalyzer, Country, Suggestion}
 import io.sherpair.w4s.geo.cache.CacheRef
 import io.sherpair.w4s.geo.config.GeoConfig
 import io.sherpair.w4s.geo.engine.EngineOps
-import io.sherpair.w4s.http.MT
+import io.sherpair.w4s.http.JsonMT
 import io.sherpair.w4s.types.Suggestions
 import org.http4s.{EntityEncoder, HttpRoutes}
 import org.http4s.circe._
@@ -35,7 +35,7 @@ class SuggestApp[F[_]: Sync](
       _.map { country =>
         resolveParameters(country, analyzer, fuzziness, maxSuggestions) match {
           case Left(error) => BadRequest(error)
-          case Right(parameters) => Ok(suggest(country, localityTerm, parameters), MT)
+          case Right(parameters) => Ok(suggest(country, localityTerm, parameters), JsonMT)
         }
       }
       .getOrElse(NotFound(s"Country(${country}) is not known"))

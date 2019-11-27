@@ -1,0 +1,360 @@
+openapi: "3.0.2"
+info:
+  title: Auth-Service API (Weather4s)
+  description: Handles all aspects of user management. From registration via email activation to authentication and authorization for all routes of Weather4s, to the management of the member's profile, used by **Geo** to show the weather of the landing locality, chosen by the user during the registration, every time she logs in.
+  version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: ==server-address==
+paths:
+  /account-activation/{tokenId}:
+    get:
+      summary: Member activation
+      description: Enable the member changing the `active` flag. The member can now sign in.
+      parameters:
+        - name: tokenId
+          in: path
+          description: Activation token. The token must be known by the DB.
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Member activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/member'
+        '404':
+          description: The token or the member-id associated with the token were not found in the DB.
+  /email/{id}:
+    post:
+      tags:
+        - (Any role)
+      summary: Change Member's email
+      description: Change the member's email, as long as the new email is not already taken by another member. The member is left in `non-active` state. To move again to state `active` the new email has to be confirmed via the activation token sent to the new address.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Member-id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        description: The `secret` property can be specified as an empty array, but still it has to be present in the request.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/member-request'
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Member is not known or is not active
+        '409':
+          description: Email given is already taken by another member
+  /expired-token:
+    post:
+      summary: Activation token expired
+      description: The activation token has expired (or maybe the email was mistakenly deleted?) before the member could confirm it. The member, in addition to the secret, can ask a new token by using her accountId or her email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/member-request'
+      responses:
+        '204':
+          description: Token sent
+        '406':
+          description: The member is already `active`
+        '429':
+          description: A new token cannot be sent because the former is more recent than the set time threshold
+  /health:
+    get:
+      tags:
+        - (Master role only)
+      summary: DB Health Check
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current DB status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/healthCheck'
+        '403':
+          description: Forbidden
+  /member/{id}:
+    delete:
+      tags:
+        - (Any role)
+      summary: Member cancellation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Member-id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Member is not known
+    get:
+      tags:
+        - (Master role only)
+      summary: Member's data
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Member-id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Member's data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/member'
+        '403':
+          description: Forbidden
+        '404':
+          description: Member is not known
+    put:
+      tags:
+        - (Any role)
+      summary: Change Member's data
+      description: In the event of an `accountId` change, the new accountId cannot be already taken by another member. When successful,the response includes a new bearer token (JWT) in the `Authorization` header.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Member-id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-request'
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Member is not known or is not active
+        '409':
+          description: AccountId given is already taken by another member
+  /members:
+    get:
+      tags:
+        - (Master role only)
+      summary: Member List
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Member's data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/members'
+        '403':
+          description: Forbidden
+  /secret/{id}:
+    post:
+      tags:
+        - (Any role)
+      summary: Change Member's secret
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Member-id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        description: The `accountId` property can be specified as an empty string, but still it has to be present in the request
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/member-request'
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Member is not known or is not active
+  /signin:
+    post:
+      summary: Member signin
+      description: Members, in addition to the secret, can sign-in by using their accountId or their email. When successful,the response includes a bearer token (JWT) in the `Authorization` header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/member-request'
+      responses:
+        '204':
+          description: Sign-in successful
+        '403':
+          description: Member is not `active`
+        '404':
+          description: Member is not known
+  /signup:
+    post:
+      summary: Member registration
+      description: Add a new member, as long as accountId and email given are not already taken by another member. The new member is left in `non-active` state. To move to state `active` the member has to confirm her identity clicking the button (which includes a token) provided by email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/signup'
+      responses:
+        '201':
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/member'
+        '409':
+          description: AccountId and/or email given are already taken by another member
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    healthCheck:
+      type: object
+      required:
+        - attempts
+        - database
+      properties:
+        attempts:
+          type: string
+        database:
+          type: string
+    member:
+      type: object
+      required:
+        - id
+        - accountId
+        - firstName
+        - lastName
+        - email
+        - geoId
+        - country
+        - active
+        - role
+        - createdAt
+      properties:
+        id:
+          type: integer
+          format: int64
+        accountId:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        geoId:
+          type: string
+        country:
+          type: string
+        active:
+          type: boolean
+        role:
+          type: string
+          enum: [Master, Member]
+        createdAt:
+          type: integer
+          format: int64
+    member-request:
+      type: object
+      required:
+        - accountId
+        - secret
+      properties:
+        accountId:
+          type: string
+        secret:
+          type: string
+          format: byte
+    members:
+      type: array
+      items:
+        $ref: "#/components/schemas/member"
+    signup:
+      type: object
+      required:
+        - accountId
+        - firstName
+        - lastName
+        - email
+        - geoId
+        - country
+        - secret
+      properties:
+        accountId:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        geoId:
+          type: string
+        country:
+          type: string
+        secret:
+          type: string
+          format: byte
+    update-request:
+      type: object
+      required:
+        - accountId
+        - firstName
+        - lastName
+        - geoId
+        - country
+      properties:
+        accountId:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        geoId:
+          type: string
+        country:
+          type: string

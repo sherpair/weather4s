@@ -75,7 +75,7 @@ lazy val commonSettings = Seq(
   // coverageMinimum := 80,
   // coverageFailOnMinimum := true,
   // wartremoverErrors in (Compile, compile) ++= Warts.unsafe,
-  libraryDependencies ++= base ++ fs2 ++ http4s ++ jwt,
+  libraryDependencies ++= base ++ fs2 ++ http4s ++ jwt ++ swagger,
   // trapExit := false,
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),

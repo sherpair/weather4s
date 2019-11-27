@@ -12,12 +12,11 @@ import doobie.syntax.applicativeerror._
 import doobie.syntax.string._
 import doobie.util.Meta
 import doobie.util.fragment.Fragment.const
-import io.sherpair.w4s.auth.config.AuthConfig
-import io.sherpair.w4s.auth.domain.{Crypt, Member, SignupRequest, UpdateRequest}
-import io.sherpair.w4s.domain.{Role, W4sError}
+import io.sherpair.w4s.auth.domain.{Crypt, Member, SignupRequest, UniqueViolation, UpdateRequest}
+import io.sherpair.w4s.domain.Role
 import tsec.passwordhashers.PasswordHash
 
-private[doobie] class MemberSql[F[_]: Sync](implicit C: AuthConfig) {
+private[doobie] class MemberSql[F[_]: Sync] {
 
   implicit val hashMeta: Meta[PasswordHash[Crypt]] = PasswordHash.subst[Crypt](implicitly[Meta[String]])
   implicit val roleMeta: Meta[Role] = pgEnumStringOpt("role", Role.withNameOption, _.entryName)
@@ -60,7 +59,7 @@ private[doobie] class MemberSql[F[_]: Sync](implicit C: AuthConfig) {
       .withUniqueGeneratedKeys[(Long, Instant)]("id", "created_at")
       .attemptSomeSqlState {
         case UNIQUE_VIOLATION =>
-          W4sError(s"(insert) accountId(${sr.accountId}) and/or email(${sr.email}) already exist")
+          UniqueViolation(s"(insert) accountId(${sr.accountId}) and/or email(${sr.email}) already taken")
       }
       .flatMap {
         case Left(error) => FC.raiseError(error)
@@ -81,8 +80,20 @@ private[doobie] class MemberSql[F[_]: Sync](implicit C: AuthConfig) {
   def subsetSql(order: String, limit: Long, offset: Long): Query0[Member] =
     (fr"SELECT" ++ fields ++ fr"FROM members" ++ fr"ORDER BY $order LIMIT $limit OFFSET $offset").query[Member]
 
-  def updateEmailSql(id: Long, email: String): Update0 =
-    sql"""UPDATE members SET email = ${email}, active = FALSE WHERE id = ${id} AND active = TRUE""".update
+  def updateEmailSql(id: Long, email: String): ConnectionIO[Option[Member]] =
+    updateEmailStmt(id, email)
+      .withUniqueGeneratedKeys[Member](member: _*)
+      .attemptSomeSqlState {
+        case UNIQUE_VIOLATION => UniqueViolation(s"email(${email}) already taken")
+      }
+      .flatMap {
+        case Left(error) => FC.raiseError(error)
+        case Right(result) => FC.pure(result.some)
+      }
+
+  def updateEmailStmt(id: Long, email: String): Update0 =
+    sql"""UPDATE members SET email = ${email}, active = FALSE WHERE id = ${id} AND active = TRUE"""
+      .update
 
   def updateSecretSql(id: Long, secret: PasswordHash[Crypt]): Update0 =
     sql"""UPDATE members SET secret = ${secret} WHERE id = ${id} AND active = TRUE""".update
@@ -91,7 +102,7 @@ private[doobie] class MemberSql[F[_]: Sync](implicit C: AuthConfig) {
     updateStmt(id, ur)
     .withUniqueGeneratedKeys[Member](member: _*)
     .attemptSomeSqlState {
-      case UNIQUE_VIOLATION => W4sError(s"(update) accountId(${ur.accountId}) already exists")
+      case UNIQUE_VIOLATION => UniqueViolation(s"accountId(${ur.accountId}) already taken")
     }
     .flatMap {
       case Left(error) => FC.raiseError(error)

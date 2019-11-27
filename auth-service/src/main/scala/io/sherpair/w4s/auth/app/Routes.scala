@@ -15,6 +15,7 @@ import io.sherpair.w4s.auth.domain.EmailType.{Activation, ResetSecret}
 import io.sherpair.w4s.auth.domain.Member
 import io.sherpair.w4s.auth.repository.{Repository, RepositoryMemberOps, RepositoryTokenOps}
 import io.sherpair.w4s.domain.{blockerForIOtasks, loadResource, Logger}
+import io.sherpair.w4s.http.ApiApp
 import org.http4s.{EntityEncoder, HttpRoutes}
 import org.http4s.circe.jsonEncoderOf
 
@@ -35,6 +36,7 @@ object Routes {
 
       routes <- Resource.liftF(CE[F].delay {
         val authenticator = Authenticator[F](jwtAlgorithm, postman, privateKey)
+        new ApiApp[F].routes <+>
         new AuthApp[F](authenticator).routes <+>
         authoriser(new MemberApp[F](authenticator).routes) <+>
         authoriser(new Monitoring[F].routes)
@@ -61,7 +63,7 @@ object Routes {
         ResetSecret.reason -> new String(resetSecretTemplate, UTF_8)
       ))
       postman <- S.delay(new Postman(Smtp(), templateMap))
-      _ <- L.info(s"Emails will be sent from the Postman to '${postman.path}'")
+      _ <- L.info(s"Emails will be sent from the Postman to '${postman.emailRoot}'")
     }
     yield postman
 }

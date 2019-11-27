@@ -23,9 +23,11 @@ object Dependencies {
     val pureconfig = "0.12.1"
     val scalacheck = "1.14.2"
     val scalatest = "3.0.8"
+    val swagger = "3.24.3"
     val testcontainers = "0.33.0"
     val testpostgres = "1.12.2"
     val tsec = "0.2.0-M2"
+    val webjars = "0.43"
   }
 
   lazy val base = Seq(
@@ -89,6 +91,11 @@ object Dependencies {
   lazy val lucene = Seq(
     "org.apache.lucene" % "lucene-core"    % version.lucene % "test",
     "org.apache.lucene" % "lucene-suggest" % version.lucene % "test"
+  )
+
+  lazy val swagger = Seq(
+    "org.webjars" % "swagger-ui"           % version.swagger,
+    "org.webjars" % "webjars-locator-core" % version.webjars
   )
 
   lazy val testcontainers = Seq(

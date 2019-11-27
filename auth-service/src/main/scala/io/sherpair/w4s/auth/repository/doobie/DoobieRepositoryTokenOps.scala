@@ -8,14 +8,11 @@ import doobie.syntax.connectionio._
 import doobie.syntax.stream._
 import doobie.util.transactor.Transactor
 import fs2.Stream
-import io.sherpair.w4s.auth.config.AuthConfig
 import io.sherpair.w4s.auth.domain.{Member, Token}
 import io.sherpair.w4s.auth.repository.RepositoryTokenOps
 import tsec.common.SecureRandomId
 
-private[doobie] class DoobieRepositoryTokenOps[F[_]: Sync](
-    tx: Transactor[F])(implicit C: AuthConfig
-) extends RepositoryTokenOps[F] {
+private[doobie] class DoobieRepositoryTokenOps[F[_]: Sync](tx: Transactor[F]) extends RepositoryTokenOps[F] {
 
   val tokenSql = new TokenSql
   import tokenSql._
@@ -47,7 +44,7 @@ private[doobie] class DoobieRepositoryTokenOps[F[_]: Sync](
 
 object DoobieRepositoryTokenOps {
 
-  def apply[F[_]: Sync](tx: Transactor[F])(implicit C: AuthConfig): F[RepositoryTokenOps[F]] =
+  def apply[F[_]: Sync](tx: Transactor[F]): F[RepositoryTokenOps[F]] =
     Sync[F].delay(new DoobieRepositoryTokenOps[F](tx))
 }
 

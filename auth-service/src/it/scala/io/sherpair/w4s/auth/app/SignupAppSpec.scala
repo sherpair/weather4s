@@ -100,7 +100,7 @@ class SignupAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
         }
       }
 
-      val expectedUrl = s"${postman.path}/${Activation.segment}"
+      val expectedUrl = s"${postman.emailRoot}/${Activation.segment}"
 
       val response = DoobieRepository[IO].use { implicit DR =>
         DR.memberRepositoryOps >>= { implicit RM =>

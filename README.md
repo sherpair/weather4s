@@ -24,21 +24,22 @@ The project also pretends to be opinionated, in some way, as it should
 - **Loader**. Operates only upon a user request, sent via **Geo**. An architectural choice was to feed ElasticSearch (the engine) with localities only when the user expressly
   asks to make a specific country available for weather queries. When this happens and as long as the country's localities are not already present in the engine, the service
   downloads the related CSV file from [geonames](http://download.geonames.org/export/dump/), transforms it and adds all localities resulting from the process to the engine in
-  a "new country" engine index (e.g. **GB** for United Kingdom, **IT** for Italy, ...).
+  a "new country" engine index (e.g. `GB` for United Kingdom, `IT` for Italy, ...).
 
-  Only if the process is successful the **countries** engine index gets updated, with the document of the "new country" set as *available*. **Geo** is notified that one
-  country is now available only after **Loader** updates the **meta** engine index, which acts as a trigger (ElasticSearch doesn't provide a transaction-like mechanism),
-  and in any case only at the next iteration of the "CacheHandler" in **Geo** which, after noticed the **meta** document was updated, makes the country visible to the user
+  Only if the process is successful the `countries` engine index gets updated, with the document of the "new country" set as *available*. **Geo** is notified that one
+  country is now available only after **Loader** updates the `meta` engine index, which acts as a trigger (ElasticSearch doesn't provide a transaction-like mechanism),
+  and in any case only at the next iteration of the `CacheHandler` in **Geo** which, after noticed the `meta` document was updated, makes the country visible to the user
   as a last step.
 
-- **Geo**. Aside from user authentication, handled by **Auth**, **Geo** is the main backend interface for the frontend to which it provides the list of available and
+- **Geo**. Aside from user authentication, handled by **Auth**, **Geo** is the main backend interface for the frontend to which provides the list of available and
   *non-available-yet* countries, as well as the list of suggestions while the user types the name of the locality she is looking the weather info for.
 
-  It is also responsible for the initialization of the engine, in which it persists, at the first launch of Weather4s, the list of all countries in the world, marked as
+  It is also responsible for the initialization of the engine, where it persists, at the first launch of Weather4s, the list of all countries in the world, marked as
   *not-available-yet*, as well as the **meta** document (in a specific engine index).
 
-- **Auth**. As expected, **Auth** handles all aspects of user management. From registration via email activation to authentication, to the management of the profile, used
-  by **Geo** to show the weather of the landing locality, chosen by the user during the registration, every time she logs in.
+- **Auth**. As expected, **Auth** handles all aspects of user management. From registration via email activation to authentication and authorization for all routes of
+  Weather4s, to the management of the member's profile, used by **Geo** to show the weather of the landing locality, chosen by the user during the registration, every
+  time she logs in.
 
 ### Frontend
 
@@ -101,14 +102,6 @@ In that case, it can be stopped running:
 $ ./bin/stop-w4s-http.sh
 ```
 
-#### Health checks (e.g. with HTTPie)
-```shell
-$ http --verify no https://0.0.0.0:8442/auth/health
-$ http --verify no https://0.0.0.0:8443/geo/health
-$ http --verify no https://0.0.0.0:8444/loader/health
-```
-Note however that these endpoints are only reachable by users with "*Master*" role.
-
 #### Configuration
 
 All Weather4s' configuration properties can be found in **env-w4s**, **env-w4s-ssl** and **env-w4s-secrets**
@@ -151,7 +144,122 @@ containers respectively with "`docker stop w4sPostgres`" and "`docker stop w4sEl
 
 ## REST Endpoints
 
-**TBD**
+Note that the following links are only valid with the *project-default* configuration... *https* and *8442*, *8443*, *8444* as network ports.
+
+- [**Auth** API](https://0.0.0.0:8442/auth/api)
+- [**Geo** API](https://0.0.0.0:8443/geo/api)
+- [**Loader** API](https://0.0.0.0:8444/loader/api)
+
+## A few examples (with HTTPie)
+
+- **Sign-up**
+```shell
+$ echo '{"accountId":"anAccount","firstName":"FN","lastName":"LN","email":"<actual email>@<email server>","geoId":"123456","country":"GB","secret":[97, 80, 97, 115, 115, 119, 111, 114, 100]}' | \
+    http --verify no POST https://0.0.0.0:8442/auth/signup
+```
+> HTTP/1.1 201 Created  
+Content-Length: 206  
+Content-Type: application/json  
+Date: Wed, 27 Nov 2019 14:42:56 GMT  
+{  
+&nbsp;&nbsp;"accountId": "anAccount",  
+&nbsp;&nbsp;"active": false,  
+&nbsp;&nbsp;"country": "GB",  
+&nbsp;&nbsp;"createdAt": "2019-11-27T14:42:49.099401Z",  
+&nbsp;&nbsp;"email": &lt;actual email&gt;@&lt;email server&gt;",  
+&nbsp;&nbsp;"firstName": "FN",  
+&nbsp;&nbsp;"geoId": "123456",  
+&nbsp;&nbsp;"id": 5,  
+&nbsp;&nbsp;"lastName": "LN",  
+&nbsp;&nbsp;"role": "Member"  
+}
+
+**Note that the new member account has to be confirmed before proceed with the next examples!!**
+
+- **Sign-in**
+```shell
+$ echo '{"accountId":"anAccount","secret":[97, 80, 97, 115, 115, 119, 111, 114, 100]}' | \
+    http --verify no POST https://0.0.0.0:8442/auth/signin
+```
+> HTTP/1.1 204 No Content  
+Authorization: Bearer  eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwic3ViIjoiNSIsImF1ZCI6WyJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvZ2VvIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvbG9hZGVyIl0sImV4cCI6MTU3NDg3NDU0NiwibmJmIjoxNTc0ODY3MzQ2LCJpYXQiOjE1NzQ4NjczNDYsImlkIjo1LCJhY2NvdW50SWQiOiJ1Y2xpbyIsImZpcnN0TmFtZSI6IlVjbGlvIiwibGFzdE5hbWUiOiJEaW5vYmkiLCJnZW9JZCI6IjEyMzQ1NiIsImNvdW50cnkiOiJJVCIsInJvbGUiOiJNZW1iZXIiLCJjcmVhdGVkQXQiOiIyMDE5LTExLTI3VDE0OjQyOjQ5LjA5OTQwMVoifQ.TgrTEP8Mlj8oF2SgIyvenoZ6itpYzpkk7fnqRnir8qy7-IkD06q5yRLESCT38fFTxXhF8gPgLnJ_smfkgDZ-5cEyNyBf6MNWJhtumxvFLt0Bm7iXdlz4IQStFEOKomuhaNXpNoykl0pufgj3Qow9ECtNoKbA8JPwJyyGJOMiF9whNM1mQDCguY8DyLTODnPmjP8zeXVAHfJXVgNHam5akUWn_VcAw38c5TtV58NZlv7fnr_qxbXLItsimr1j-QGcBeuPxCIgE_lu2qLazfN2cuWwBUbWfEDCuE8fhbm2GxxoGAYS_FZsQ2_KNYkMRj2dNVb1CuKtjjlJQmwCZll-dg  
+Date: Wed, 27 Nov 2019 15:09:06 GMT
+
+- **List the available countries**
+```shell
+$ http --verify no https://0.0.0.0:8443/geo/countries/available 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwic3ViIjoiNSIsImF1ZCI6WyJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvZ2VvIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvbG9hZGVyIl0sImV4cCI6MTU3NDg3NDU0NiwibmJmIjoxNTc0ODY3MzQ2LCJpYXQiOjE1NzQ4NjczNDYsImlkIjo1LCJhY2NvdW50SWQiOiJ1Y2xpbyIsImZpcnN0TmFtZSI6IlVjbGlvIiwibGFzdE5hbWUiOiJEaW5vYmkiLCJnZW9JZCI6IjEyMzQ1NiIsImNvdW50cnkiOiJJVCIsInJvbGUiOiJNZW1iZXIiLCJjcmVhdGVkQXQiOiIyMDE5LTExLTI3VDE0OjQyOjQ5LjA5OTQwMVoifQ.TgrTEP8Mlj8oF2SgIyvenoZ6itpYzpkk7fnqRnir8qy7-IkD06q5yRLESCT38fFTxXhF8gPgLnJ_smfkgDZ-5cEyNyBf6MNWJhtumxvFLt0Bm7iXdlz4IQStFEOKomuhaNXpNoykl0pufgj3Qow9ECtNoKbA8JPwJyyGJOMiF9whNM1mQDCguY8DyLTODnPmjP8zeXVAHfJXVgNHam5akUWn_VcAw38c5TtV58NZlv7fnr_qxbXLItsimr1j-QGcBeuPxCIgE_lu2qLazfN2cuWwBUbWfEDCuE8fhbm2GxxoGAYS_FZsQ2_KNYkMRj2dNVb1CuKtjjlJQmwCZll-dg'
+```
+> HTTP/1.1 200 OK  
+Content-Type: application/json; charset=UTF-8  
+Date: Wed, 27 Nov 2019 15:25:24 GMT  
+Transfer-Encoding: chunked  
+[  
+&nbsp;&nbsp;{  
+&nbsp;&nbsp;&nbsp;&nbsp;"analyzer": "english",  
+&nbsp;&nbsp;&nbsp;&nbsp;"code": "gb",  
+&nbsp;&nbsp;&nbsp;&nbsp;"localities": 64210,  
+&nbsp;&nbsp;&nbsp;&nbsp;"name": "United Kingdom",  
+&nbsp;&nbsp;&nbsp;&nbsp;"updated": 1574346988978  
+&nbsp;&nbsp;},  
+&nbsp;&nbsp;{  
+&nbsp;&nbsp;&nbsp;&nbsp;"analyzer": "stop",  
+&nbsp;&nbsp;&nbsp;&nbsp;"code": "zw",  
+&nbsp;&nbsp;&nbsp;&nbsp;"localities": 24821,  
+&nbsp;&nbsp;&nbsp;&nbsp;"name": "Zimbabwe",  
+&nbsp;&nbsp;&nbsp;&nbsp;"updated": 1574523193335  
+&nbsp;&nbsp;},  
+]
+
+- **Download a "*not-available-yet*" country**
+```shell
+$ http --verify no PUT https://0.0.0.0:8443/geo/country/luxembourg 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwic3ViIjoiNSIsImF1ZCI6WyJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvZ2VvIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvbG9hZGVyIl0sImV4cCI6MTU3NDg3NDU0NiwibmJmIjoxNTc0ODY3MzQ2LCJpYXQiOjE1NzQ4NjczNDYsImlkIjo1LCJhY2NvdW50SWQiOiJ1Y2xpbyIsImZpcnN0TmFtZSI6IlVjbGlvIiwibGFzdE5hbWUiOiJEaW5vYmkiLCJnZW9JZCI6IjEyMzQ1NiIsImNvdW50cnkiOiJJVCIsInJvbGUiOiJNZW1iZXIiLCJjcmVhdGVkQXQiOiIyMDE5LTExLTI3VDE0OjQyOjQ5LjA5OTQwMVoifQ.TgrTEP8Mlj8oF2SgIyvenoZ6itpYzpkk7fnqRnir8qy7-IkD06q5yRLESCT38fFTxXhF8gPgLnJ_smfkgDZ-5cEyNyBf6MNWJhtumxvFLt0Bm7iXdlz4IQStFEOKomuhaNXpNoykl0pufgj3Qow9ECtNoKbA8JPwJyyGJOMiF9whNM1mQDCguY8DyLTODnPmjP8zeXVAHfJXVgNHam5akUWn_VcAw38c5TtV58NZlv7fnr_qxbXLItsimr1j-QGcBeuPxCIgE_lu2qLazfN2cuWwBUbWfEDCuE8fhbm2GxxoGAYS_FZsQ2_KNYkMRj2dNVb1CuKtjjlJQmwCZll-dg'
+```
+> HTTP/1.1 204 No Content  
+Date: Wed, 27 Nov 2019 15:33:08 GMT
+
+- **Suggest a locality**
+```shell
+$ http --verify no https://0.0.0.0:8443/geo/suggest/gb/lond?maxSuggestions=3 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwic3ViIjoiNSIsImF1ZCI6WyJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvZ2VvIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvbG9hZGVyIl0sImV4cCI6MTU3NDg3NDU0NiwibmJmIjoxNTc0ODY3MzQ2LCJpYXQiOjE1NzQ4NjczNDYsImlkIjo1LCJhY2NvdW50SWQiOiJ1Y2xpbyIsImZpcnN0TmFtZSI6IlVjbGlvIiwibGFzdE5hbWUiOiJEaW5vYmkiLCJnZW9JZCI6IjEyMzQ1NiIsImNvdW50cnkiOiJJVCIsInJvbGUiOiJNZW1iZXIiLCJjcmVhdGVkQXQiOiIyMDE5LTExLTI3VDE0OjQyOjQ5LjA5OTQwMVoifQ.TgrTEP8Mlj8oF2SgIyvenoZ6itpYzpkk7fnqRnir8qy7-IkD06q5yRLESCT38fFTxXhF8gPgLnJ_smfkgDZ-5cEyNyBf6MNWJhtumxvFLt0Bm7iXdlz4IQStFEOKomuhaNXpNoykl0pufgj3Qow9ECtNoKbA8JPwJyyGJOMiF9whNM1mQDCguY8DyLTODnPmjP8zeXVAHfJXVgNHam5akUWn_VcAw38c5TtV58NZlv7fnr_qxbXLItsimr1j-QGcBeuPxCIgE_lu2qLazfN2cuWwBUbWfEDCuE8fhbm2GxxoGAYS_FZsQ2_KNYkMRj2dNVb1CuKtjjlJQmwCZll-dg'
+```
+> HTTP/1.1 200 OK  
+Content-Type: application/json; charset=UTF-8  
+Date: Wed, 27 Nov 2019 15:38:25 GMT  
+Transfer-Encoding: chunked  
+[  
+&nbsp;&nbsp;{  
+&nbsp;&nbsp;&nbsp;&nbsp;"coord": {  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lat": 51.49227,  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lon": -0.30864  
+&nbsp;&nbsp;&nbsp;&nbsp;},  
+&nbsp;&nbsp;&nbsp;&nbsp;"name": {  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"input": "London",  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"weight": 8787892  
+&nbsp;&nbsp;&nbsp;&nbsp;},  
+&nbsp;&nbsp;&nbsp;&nbsp;"tz": "Europe/London"  
+&nbsp;&nbsp;},  
+&nbsp;&nbsp;{  
+&nbsp;&nbsp;&nbsp;&nbsp;"coord": {  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lat": 54.99721,  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lon": -7.30917  
+&nbsp;&nbsp;&nbsp;&nbsp;},  
+&nbsp;&nbsp;&nbsp;&nbsp;"name": {  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"input": "Londonderry County Borough",  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"weight": 87153  
+&nbsp;&nbsp;&nbsp;&nbsp;},  
+&nbsp;&nbsp;&nbsp;&nbsp;"tz": "Europe/London"  
+&nbsp;&nbsp;},  
+&nbsp;&nbsp;{  
+&nbsp;&nbsp;&nbsp;&nbsp;"coord": {  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lat": 52.89855,  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lon": -1.27136  
+&nbsp;&nbsp;&nbsp;&nbsp;},  
+&nbsp;&nbsp;&nbsp;&nbsp;"name": {  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"input": "Long Eaton",  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"weight": 47898  
+&nbsp;&nbsp;&nbsp;&nbsp;},  
+&nbsp;&nbsp;&nbsp;&nbsp;"tz": "Europe/London"  
+&nbsp;&nbsp;}  
+]
 
 [cats-badge]: https://typelevel.org/cats/img/cats-badge-tiny.png
 [cats-link]: https://typelevel.org/cats/

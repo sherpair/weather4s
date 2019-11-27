@@ -1,0 +1,103 @@
+openapi: "3.0.2"
+info:
+  title: Loader-Service API (Weather4s)
+  description: Operates only upon a user request, sent via **Geo**. An architectural choice was to feed ElasticSearch (the engine) with localities only when the user expressly asks to make a specific country available for weather queries. When this happens and as long as the country's localities are not already present in the engine, the service downloads the related CSV file from [geonames](http://download.geonames.org/export/dump/), transforms it and adds all localities resulting from the process to the engine in a 'new country' engine index (e.g. `GB` for United Kingdom, `IT` for Italy, ...).<br/><br/>Only if the process is successful the `countries` engine index gets updated, with the document of the 'new country' set as *available*. **Geo** is notified that one country is now available only after **Loader** updates the `meta` engine index, which acts as a trigger (ElasticSearch doesn't provide a transaction-like mechanism), and in any case only at the next iteration of the `CacheHandler` in **Geo** which, after noticed the `meta` document was updated, makes the country visible to the user as a last step.
+  version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: ==server-address==
+paths:
+  /country/{id}:
+    put:
+      tags:
+        - (Any role)
+      summary: Make a specific country available for weather queries
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Country (code or name)
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/country'
+      responses:
+        '204':
+          description: No Content
+        '403':
+          description: Forbidden
+  /health:
+    get:
+      tags:
+        - (Master role only)
+      summary: Engine Health Check
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current status of the engine
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/healthCheck'
+        '403':
+          description: Forbidden
+  /quit:
+    get:
+      tags:
+        - (Master role only)
+      summary: Stop queuing download requests
+      description: Notify the **Loader** to not queue further "*country download*" requests. Generally used in case of service update, letting the **Loader** to terminate any running download before stopping it.
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: No Content
+        '403':
+          description: Forbidden
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    country:
+      type: object
+      required:
+        - code
+        - name
+        - analyzer
+        - localities
+        - updated
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        analyzer:
+          type: string
+        localities:
+          type: integer
+          format: int64
+        updated:
+          type: integer
+          format: int64
+    healthCheck:
+      type: object
+      required:
+        - attempts
+        - engine
+      properties:
+        attempts:
+          type: string
+        engine:
+          type: string

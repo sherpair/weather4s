@@ -8,6 +8,7 @@ import io.sherpair.w4s.engine.Engine
 import io.sherpair.w4s.geo.cache.CacheRef
 import io.sherpair.w4s.geo.config.GeoConfig
 import io.sherpair.w4s.geo.engine.EngineOps
+import io.sherpair.w4s.http.ApiApp
 import org.http4s.HttpRoutes
 import org.http4s.client.Client
 
@@ -25,6 +26,7 @@ object Routes {
       routes <- Resource.liftF(CE[F].delay {
         // For performance reason no authoriser for the "suggest" endpoint.
         // Still, to benchmark with and without when the frontend is ready.
+        new ApiApp[F].routes <+>
         new SuggestApp[F](cacheRef, engineOps).routes <+>
         authoriser(new CountryApp[F](cacheRef, client).routes) <+>
         authoriser(new Monitoring[F].routes)

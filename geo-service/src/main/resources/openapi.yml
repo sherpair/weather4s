@@ -1,0 +1,276 @@
+openapi: "3.0.2"
+info:
+  title: Geo-Service API (Weather4s)
+  description: Aside from user authentication, handled by **Auth**, **Geo** is the main backend interface for the frontend to which provides the list of *available* and *non-available-yet* countries, as well as the list of suggestions while the user types the name of the locality she is looking the weather info for.<br/><br/>It is also responsible for the initialization of the engine, where it persists, at the first launch of Weather4s, the list of all countries in the world, marked as *not-available-yet*, as well as the **meta** document (in a specific engine index).
+  version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: ==server-address==
+paths:
+  /country/{id}:
+    get:
+      tags:
+        - (Any role)
+      summary: Country's data
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Country (code or name)
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Country's data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/country'
+        '404':
+          description: Country is not known
+    put:
+      tags:
+        - (Any role)
+      summary: Ask to make available a "not available yet" country
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Country (code or name)
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Download request enqueued
+        '404':
+          description: Country is not known
+        '409':
+          description: Country is already available
+  /countries:
+    get:
+      tags:
+        - (Any role)
+      summary: Count of available and not-available-yet countries
+      security:
+        - bearerAuth: []
+      responses:
+        description: Count of available and not-available-yet countries
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/countryCount'
+  /countries/available:
+    get:
+      tags:
+        - (Any role)
+      summary: List of available countries
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of available countries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/country'
+  /countries/not-available-yet:
+    get:
+      tags:
+        - (Any role)
+      summary: List of "not available yet" countries
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of "not available yet" countries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/country'
+  /health:
+    get:
+      tags:
+        - (Master role only)
+      summary: DB Health Check
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current DB status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/healthCheck'
+        '403':
+          description: Forbidden
+  /localities/{id}:
+    get:
+      tags:
+        - (Any role)
+      summary: Count of the localities for a specific country
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Country (code or name)
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Count of the localities for a specific country
+          content:
+            application/json:
+              schema:
+                type: integer
+                format: int64
+        '404':
+          description: Country is not known
+  /suggest/{countryId}/{localityTerm}:
+    get:
+      summary: List of suggested localities given a country and a locality suffix
+      parameters:
+        - name: countryId
+          in: path
+          description: Country (code or name)
+          required: true
+          schema:
+            type: string
+        - name: localityTerm
+          in: path
+          description: Locality suffix
+          required: true
+          schema:
+            type: string
+        - name: analyzer
+          in: query
+          description: The analyzer to use. [List of available analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html)
+          required: false
+          schema:
+            type: string
+        - name: fuzziness
+          in: query
+          description: The level of fuzziness
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 2
+        - name: maxSuggestions
+          in: query
+          description: The maximum number of suggestions to return
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of the suggested localities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/suggestions'
+        '400':
+          description: Not a valid analyzer
+        '404':
+          description: Country is not known
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    country:
+      type: object
+      required:
+        - code
+        - name
+        - analyzer
+        - localities
+        - updated
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        analyzer:
+          type: string
+        localities:
+          type: integer
+          format: int64
+        updated:
+          type: integer
+          format: int64
+    countryCount:
+      type: object
+      required:
+        - total
+        - available
+        - notAvailableYet
+      properties:
+        total:
+          type: integer
+          format: int32
+        available:
+          type: integer
+          format: int32
+        notAvailableYet:
+          type: integer
+          format: int32
+    geoPoint:
+      type: object
+      required:
+        - lat
+        - lon
+      properties:
+        lat:
+          type: number
+          format: double
+        lon:
+          type: number
+          format: double
+    healthCheck:
+      type: object
+      required:
+        - attempts
+        - engine
+      properties:
+        attempts:
+          type: string
+        engine:
+          type: string
+    suggestion:
+      type: object
+      required:
+        - name
+        - coord
+        - tz
+      properties:
+        name:
+          type: object
+          properties:
+            input:
+              type: string
+            weight:
+              type: integer
+              format: int32
+        coord:
+          $ref: '#/components/schemas/geoPoint'
+        tz:
+          type: string
+    suggestions:
+      type: array
+      items:
+        $ref: "#/components/schemas/suggestion"

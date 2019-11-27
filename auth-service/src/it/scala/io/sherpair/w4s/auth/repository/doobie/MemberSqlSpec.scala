@@ -18,7 +18,7 @@ class MemberSqlSpec extends TransactorSpec with MemberFixtures {
       check(findSql(m.id))
 
       val ur = UpdateRequest(m.accountId, m.firstName, m.lastName, m.geoId, m.country)
-      check(updateEmailSql(m.id, m.email))
+      check(updateEmailStmt(m.id, m.email))
       check(updateSecretSql(m.id, fakeSecret))
       check(updateStmt(m.id, ur))
 

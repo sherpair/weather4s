@@ -10,12 +10,11 @@ import doobie.syntax.stream._
 import doobie.util.invariant.UnexpectedEnd
 import doobie.util.transactor.Transactor
 import fs2.Stream
-import io.sherpair.w4s.auth.config.AuthConfig
 import io.sherpair.w4s.auth.domain.{Crypt, Member, SignupRequest, UpdateRequest}
 import io.sherpair.w4s.auth.repository.RepositoryMemberOps
 
 private[doobie] class DoobieRepositoryMemberOps[F[_]](
-    tx: Transactor[F])(implicit C: AuthConfig, S: Sync[F]
+    tx: Transactor[F])(implicit S: Sync[F]
 ) extends RepositoryMemberOps[F] {
 
   val memberSql = new MemberSql
@@ -56,8 +55,6 @@ private[doobie] class DoobieRepositoryMemberOps[F[_]](
 
   override def update(id: Long, email: String): F[Option[Member]] =
     updateEmailSql(id, email)
-      .withUniqueGeneratedKeys[Member](member: _*)
-      .map(_.some)
       .transact(tx)
       .recoverWith {
         case UnexpectedEnd => none[Member].pure[F]
@@ -82,6 +79,6 @@ private[doobie] class DoobieRepositoryMemberOps[F[_]](
 
 object DoobieRepositoryMemberOps {
 
-  def apply[F[_]: Sync](tx: Transactor[F])(implicit C: AuthConfig): F[RepositoryMemberOps[F]] =
+  def apply[F[_]: Sync](tx: Transactor[F]): F[RepositoryMemberOps[F]] =
     Sync[F].delay(new DoobieRepositoryMemberOps[F](tx))
 }

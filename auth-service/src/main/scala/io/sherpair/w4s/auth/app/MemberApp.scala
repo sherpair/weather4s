@@ -1,18 +1,19 @@
 package io.sherpair.w4s.auth.app
 
 import cats.effect.Sync
+import cats.syntax.applicativeError._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.semigroupk._
 import io.sherpair.w4s.auth.config.AuthConfig
-import io.sherpair.w4s.auth.domain.{Member, MemberAction, MemberRequest, UpdateRequest}
+import io.sherpair.w4s.auth.domain.{Member, MemberAction, MemberRequest, UniqueViolation, UpdateRequest}
 import io.sherpair.w4s.auth.domain.EmailType.Activation
-import io.sherpair.w4s.auth.domain.MemberAction.{MemberDelete, MemberUpdate, UpdateEmail, UpdateSecret}
+import io.sherpair.w4s.auth.domain.MemberAction.{ChangeEmail, ChangeSecret, MemberDelete, MemberUpdate}
 import io.sherpair.w4s.auth.masterOnly
 import io.sherpair.w4s.auth.repository.RepositoryMemberOps
 import io.sherpair.w4s.domain.{ClaimContent, Logger}
 import io.sherpair.w4s.domain.Role.Master
-import io.sherpair.w4s.http.{arrayOf, MT}
+import io.sherpair.w4s.http.{arrayOf, JsonMT}
 import org.http4s.{AuthedRequest, AuthedRoutes, EntityDecoder, EntityEncoder, Response}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
@@ -29,16 +30,16 @@ class MemberApp[F[_]: Sync](
     AuthedRoutes.of[ClaimContent, F] {
       case GET -> Root / "member" / LongVar(id) as cC => masterOnly(cC, R.find(id) >>= { memberResponse(_, id) })
 
-      case GET -> Root / "members" as cC => masterOnly(cC, Ok(arrayOf(R.list), MT))
+      case GET -> Root / "members" as cC => masterOnly(cC, Ok(arrayOf(R.list), JsonMT))
     }
 
   private val memberRoutes: AuthedRoutes[ClaimContent, F] =
     AuthedRoutes.of[ClaimContent, F] {
       case request @ DELETE -> Root / "member" / LongVar(id) as _ => validateMember(request, id, MemberDelete)
 
-      case request @ POST -> Root / "email" / LongVar(id) as _ => validateMember(request, id, UpdateEmail)
+      case request @ POST -> Root / "email" / LongVar(id) as _ => validateMember(request, id, ChangeEmail)
 
-      case request @ POST -> Root / "secret" / LongVar(id) as _ => validateMember(request, id, UpdateSecret)
+      case request @ POST -> Root / "secret" / LongVar(id) as _ => validateMember(request, id, ChangeSecret)
 
       case request @ PUT -> Root / "member" / LongVar(id) as _ => validateMember(request, id, MemberUpdate)
     }
@@ -58,22 +59,31 @@ class MemberApp[F[_]: Sync](
   ): F[Response[F]] =
     if (request.authInfo.role != Master && request.authInfo.id != id) notFoundResponse(id)
     else memberAction match {
+      case ChangeEmail =>
+        request.req.as[MemberRequest] >>= { memberRequest =>
+          val result = R.update(id, memberRequest.accountId) >>= {
+            _.fold(notFoundResponse(id))(auth.sendToken(_, Activation) *> NoContent())
+          }
+
+          result.recoverWith {
+            case UniqueViolation(msg) => Conflict(msg)
+          }
+        }
+
+      case ChangeSecret => request.req.decode[MemberRequest] { memberRequest =>
+        R.update(id, memberRequest.secret) >>= { noContentResponse(_, id) }
+      }
+
       case MemberDelete => R.delete(id) >>= { noContentResponse(_, id) }
 
-      case MemberUpdate => request.req.decode[UpdateRequest] {
-        R.update(id, _) >>= {
+      case MemberUpdate => request.req.as[UpdateRequest] >>= { updateRequest =>
+        val result = R.update(id, updateRequest) >>= {
           _.fold(notFoundResponse(id))(auth.addJwtToAuthorizationHeader(NoContent(), _))
         }
-      }
 
-      case UpdateEmail => request.req.as[MemberRequest] >>= { memberRequest =>
-        R.update(id, memberRequest.accountId) >>= {
-          _.fold(notFoundResponse(id))(auth.sendToken(_, Activation) *> NoContent())
+        result.recoverWith {
+          case UniqueViolation(msg) => Conflict(msg)
         }
-      }
-
-      case UpdateSecret => request.req.decode[MemberRequest] { memberRequest =>
-        R.update(id, memberRequest.secret) >>= { noContentResponse(_, id) }
       }
     }
 }

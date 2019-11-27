@@ -10,19 +10,18 @@ import cats.syntax.option._
 import io.sherpair.w4s.auth.domain.{EmailType, Member, Token}
 import io.sherpair.w4s.config.Configuration
 import io.sherpair.w4s.domain.Logger
+import io.sherpair.w4s.http.serverRoot
 import tsec.common.SecureRandomId
 
 abstract class MaybePostman(implicit C: Configuration) {
 
-  lazy val path = s"${C.plainHttp.fold("https")(if (_) "http" else "https")}://${host}${C.root}"
+  lazy val emailRoot = serverRoot
 
   def sendEmail(token: Token, member: Member, emailType: EmailType): Option[String] = none[String]
 
-  protected def url(segment: String): String = s"${path}/${segment}"
+  protected def url(segment: String): String = s"${emailRoot}/${segment}"
 
-  protected def url(segment: String, token: SecureRandomId): String = s"${path}/${segment}/${token}"
-
-  private val host: String = s"${InetAddress.getLocalHost.getHostAddress}:${C.host.port}"
+  protected def url(segment: String, token: SecureRandomId): String = s"${emailRoot}/${segment}/${token}"
 }
 
 class Postman[F[_]](

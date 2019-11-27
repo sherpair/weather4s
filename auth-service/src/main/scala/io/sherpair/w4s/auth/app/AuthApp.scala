@@ -5,11 +5,11 @@ import cats.syntax.applicativeError._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import io.sherpair.w4s.auth.config.AuthConfig
-import io.sherpair.w4s.auth.domain.{AuthAction, Crypt, EmailType, Member, MemberRequest, SignupRequest}
+import io.sherpair.w4s.auth.domain.{AuthAction, Crypt, EmailType, Member, MemberRequest, SignupRequest, UniqueViolation}
 import io.sherpair.w4s.auth.domain.AuthAction._
 import io.sherpair.w4s.auth.domain.EmailType.Activation
 import io.sherpair.w4s.auth.repository.RepositoryMemberOps
-import io.sherpair.w4s.domain.{Logger, W4sError}
+import io.sherpair.w4s.domain.Logger
 import org.http4s.{EntityDecoder, EntityEncoder, HttpRoutes, Request, Response}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
@@ -30,9 +30,6 @@ class AuthApp[F[_]: Sync](
     case            GET -> Root / "account-activation" / tokenId => activation(tokenId)
 
     case request @ POST -> Root / "expired-token" => validateMember(request, ActivationExpired)
-
-    /* TODO */
-    case request @ POST -> Root / "reset-secret" => validateMember(request, ResetSecret)
 
     case request @ POST -> Root / "signin" => validateMember(request, Signin)
 
@@ -70,10 +67,6 @@ class AuthApp[F[_]: Sync](
     if (member.active) NotAcceptable("Already active")
     else resendTokenOnRateLimiting(member, Activation)
 
-  private def sendResetSecretToken(member: Member): F[Response[F]] =
-    if (member.active) resendTokenOnRateLimiting(member, EmailType.ResetSecret)
-    else Forbidden("Inactive")
-
   private def signinResponse(member: Member): F[Response[F]] =
     if (member.active) auth.addJwtToAuthorizationHeader(NoContent(), member) else Forbidden("Inactive")
 
@@ -82,8 +75,8 @@ class AuthApp[F[_]: Sync](
       R.insert(signupRequest)
         .flatTap(auth.sendToken(_, Activation))
         .flatMap(member => Created(member))
-        .handleErrorWith {
-          case W4sError(msg, _) => Conflict(msg)
+        .recoverWith {
+          case UniqueViolation(msg) => Conflict(msg)
         }
     }
 
@@ -99,7 +92,6 @@ class AuthApp[F[_]: Sync](
   ): F[Response[F]] =
     authAction match {
       case ActivationExpired => resendActivationToken(memberWithSecret._1)
-      case ResetSecret => sendResetSecretToken(memberWithSecret._1)
       case Signin =>
         Crypt.checkpwBool[F](memberRequest.secret, PasswordHash[Crypt](memberWithSecret._2))
           .ifM(signinResponse(memberWithSecret._1), notFound(memberRequest.accountId))
