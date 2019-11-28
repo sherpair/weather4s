@@ -11,7 +11,7 @@ object Dependencies {
     val enumeratum = "1.5.13"
     val enumeratumCirce = "1.5.22"
     val fs2 = "2.1.0"
-    val flyway = "6.0.8"
+    val flyway = "6.1.0"
     val elastic4s = "7.3.1"
     val http4s = "0.21.0-M5"
     val javamail = "1.6.4"
