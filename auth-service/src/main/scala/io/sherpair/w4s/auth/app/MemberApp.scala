@@ -46,44 +46,49 @@ class MemberApp[F[_]: Sync](
 
   val routes = masterOnlyRoutes <+> memberRoutes
 
+  private def emailUpdate(request: AuthedRequest[F, ClaimContent], id: Long): F[Response[F]] =
+    request.req.as[MemberRequest] >>= { memberRequest =>
+      val result = R.update(id, memberRequest.accountId) >>= {
+        _.fold(notFoundResponse(id))(auth.sendToken(_, Activation) *> NoContent())
+      }
+
+      result.recoverWith {
+        case UniqueViolation(msg) => Conflict(msg)
+      }
+    }
+
   private def memberResponse(memberO: Option[Member], id: Long): F[Response[F]] =
     memberO.fold(notFoundResponse(id))(Ok(_))
+
+  private def memberUpdate(request: AuthedRequest[F, ClaimContent], id: Long): F[Response[F]] =
+    request.req.as[UpdateRequest] >>= { updateRequest =>
+      val result = R.update(id, updateRequest) >>= {
+        _.fold(notFoundResponse(id))(auth.addJwtToAuthorizationHeader(NoContent(), _))
+      }
+
+      result.recoverWith {
+        case UniqueViolation(msg) => Conflict(msg)
+      }
+    }
 
   private def noContentResponse(deletedOrUpdated: Int, id: Long): F[Response[F]] =
     Sync[F].delay(deletedOrUpdated > 0).ifM(NoContent(), notFoundResponse(id))
 
   private def notFoundResponse(id: Long): F[Response[F]] = NotFound(s"Member(${id}) is not known")
 
+  private def secretUpdate(request: AuthedRequest[F, ClaimContent], id: Long): F[Response[F]] =
+    request.req.decode[MemberRequest] { memberRequest =>
+      R.update(id, memberRequest.secret) >>= { noContentResponse(_, id) }
+    }
+
   private def validateMember(
       request: AuthedRequest[F, ClaimContent], id: Long, memberAction: MemberAction
   ): F[Response[F]] =
     if (request.authInfo.role != Master && request.authInfo.id != id) notFoundResponse(id)
     else memberAction match {
-      case ChangeEmail =>
-        request.req.as[MemberRequest] >>= { memberRequest =>
-          val result = R.update(id, memberRequest.accountId) >>= {
-            _.fold(notFoundResponse(id))(auth.sendToken(_, Activation) *> NoContent())
-          }
-
-          result.recoverWith {
-            case UniqueViolation(msg) => Conflict(msg)
-          }
-        }
-
-      case ChangeSecret => request.req.decode[MemberRequest] { memberRequest =>
-        R.update(id, memberRequest.secret) >>= { noContentResponse(_, id) }
-      }
-
+      case ChangeEmail => emailUpdate(request, id)
+      case ChangeSecret => secretUpdate(request, id)
       case MemberDelete => R.delete(id) >>= { noContentResponse(_, id) }
-
-      case MemberUpdate => request.req.as[UpdateRequest] >>= { updateRequest =>
-        val result = R.update(id, updateRequest) >>= {
-          _.fold(notFoundResponse(id))(auth.addJwtToAuthorizationHeader(NoContent(), _))
-        }
-
-        result.recoverWith {
-          case UniqueViolation(msg) => Conflict(msg)
-        }
-      }
+      case MemberUpdate => memberUpdate(request, id)
     }
 }

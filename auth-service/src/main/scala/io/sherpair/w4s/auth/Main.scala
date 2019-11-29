@@ -14,7 +14,7 @@ object Main extends IOApp {
     implicit val authConfig: AuthConfig = AuthConfig()
     implicit val logger: Logger[IO] = Slf4jLogger.getLogger
 
-    CallGraph[IO](DoobieRepository[IO])
+    TaglessGraph[IO](DoobieRepository[IO])
       .use(_ => IO.never)
       .attempt
       .map(_.fold(exitWithError(_), (_: Unit) => ExitCode.Success))

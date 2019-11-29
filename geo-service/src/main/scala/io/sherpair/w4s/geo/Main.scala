@@ -14,7 +14,7 @@ object Main extends IOApp {
     implicit val configuration: GeoConfig = GeoConfig()
     implicit val logger: Logger[IO] = Slf4jLogger.getLogger
 
-    CallGraph[IO](ElasticEngine[IO])
+    TaglessGraph[IO](ElasticEngine[IO])
       .use(_ => IO.never)
       .attempt
       .map(_.fold(exitWithError(_), (_: Unit) => ExitCode.Success))

@@ -10,12 +10,12 @@ import io.sherpair.w4s.loader.config.LoaderConfig
 import io.sherpair.w4s.loader.engine.EngineOps
 import org.http4s.server.Server
 
-object CallGraph {
+object TaglessGraph {
 
-  type CallGraphRes[F[_]] = Resource[F, Server[F]]
+  type TaglessGraphRes[F[_]] = Resource[F, Server[F]]
 
 
-  def apply[F[_]: CE: CS: Logger: Timer](engineR: Resource[F, Engine[F]])(implicit C: LoaderConfig): CallGraphRes[F] =
+  def apply[F[_]: CE: CS: Logger: Timer](engineR: Resource[F, Engine[F]])(implicit C: LoaderConfig): TaglessGraphRes[F] =
     for {
       implicit0(engine: Engine[F]) <- engineR
       implicit0(engineOps: EngineOps[F]) <- Resource.liftF(EngineOps[F](C.clusterName))

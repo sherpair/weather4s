@@ -8,11 +8,11 @@ import io.sherpair.w4s.domain.Logger
 import io.sherpair.w4s.http.{maybeWithSSLContext, HttpServer}
 import org.http4s.server.Server
 
-object CallGraph {
+object TaglessGraph {
 
-  type CallGraphRes[F[_]] = Resource[F, Server[F]]
+  type TaglessGraphRes[F[_]] = Resource[F, Server[F]]
 
-  def apply[F[_]: CE: CS: Logger: Timer](repo: Resource[F, Repository[F]])(implicit C: AuthConfig): CallGraphRes[F] =
+  def apply[F[_]: CE: CS: Logger: Timer](repo: Resource[F, Repository[F]])(implicit C: AuthConfig): TaglessGraphRes[F] =
     for {
       implicit0(repository: Repository[F]) <- repo
       _ <- Resource.liftF(repository.init)
