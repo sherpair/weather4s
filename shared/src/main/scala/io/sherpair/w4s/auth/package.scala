@@ -76,7 +76,7 @@ package object auth {
     import http4sDsl._
 
     Kleisli {
-      request => OptionT.liftF(Forbidden(request.authInfo))
+      request => OptionT.liftF(Forbidden(request.context))
     }
   }
 

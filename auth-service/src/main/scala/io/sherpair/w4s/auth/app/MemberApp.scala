@@ -84,7 +84,7 @@ class MemberApp[F[_]: Sync](
   private def validateMember(
       request: AuthedRequest[F, ClaimContent], id: Long, memberAction: MemberAction
   ): F[Response[F]] =
-    if (request.authInfo.role != Master && request.authInfo.id != id) notFoundResponse(id)
+    if (request.context.role != Master && request.context.id != id) notFoundResponse(id)
     else memberAction match {
       case ChangeEmail => emailUpdate(request, id)
       case ChangeSecret => secretUpdate(request, id)

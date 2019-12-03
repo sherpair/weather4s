@@ -14,12 +14,14 @@ import io.sherpair.w4s.geo.config.GeoConfig
 import io.sherpair.w4s.types.Suggestions
 import org.http4s.EntityDecoder
 import org.http4s.circe.jsonOf
-import org.scalatest.{EitherValues, Matchers, OptionValues, PrivateMethodTester, WordSpec}
+import org.scalatest.{EitherValues, OptionValues, PrivateMethodTester}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 package object geo {
 
   trait GeoSpec
-    extends WordSpec
+    extends AnyWordSpec
       with Matchers
       with EitherValues
       with OptionValues

@@ -10,10 +10,12 @@ import io.sherpair.w4s.auth.domain.Member
 import io.sherpair.w4s.domain.Logger
 import org.http4s.EntityEncoder
 import org.http4s.circe.jsonEncoderOf
-import org.scalatest.{EitherValues, Matchers, OptionValues, PrivateMethodTester, WordSpec}
+import org.scalatest.{EitherValues, OptionValues, PrivateMethodTester}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 trait AuthSpec
-  extends WordSpec
+  extends AnyWordSpec
     with Matchers
     with EitherValues
     with OptionValues
