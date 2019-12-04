@@ -1,16 +1,7 @@
-.*
-
 bin/env-w4s.secrets
-shared/src/main/resources/ssl/*
-
-!.scalafix.conf
-!.scalafmt.conf
-!.gitignore
-
 .bloop
 .cache
 /.classpath
-db
 dist
 .DS_Store
 **/*.DS_Store
@@ -24,6 +15,7 @@ lib
 lib_managed
 log
 logs
+.metals
 modules
 /out
 precompiled
@@ -33,8 +25,8 @@ project/target
 /RUNNING_PID
 server.pid
 /.settings
+shared/src/main/resources/ssl/*
 target
 .target
 test-result
 tmp
-.idea_modules

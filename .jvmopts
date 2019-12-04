@@ -1,0 +1,9 @@
+# Use a serial GC if on single core (e.g. on cloud)
+# Change UseParallelGC to UseZGC to experiment on JRE 11 (but not for the Loader service)
+-Dfile.encoding=UTF8
+-Xms1G
+-Xmx2G
+-Xss8m
+-XX:ReservedCodeCacheSize=256M
+-XX:+TieredCompilation
+-XX:+UseParallelGC

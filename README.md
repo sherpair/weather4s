@@ -1,4 +1,4 @@
-Weather4S  [![Chat][gitter-badge]][gitter-link]
+Weather4S &nbsp;&nbsp; [![Build Status](https://travis-ci.org/sherpair/weather4s.svg?branch=master)](https://travis-ci.org/sherpair/weather4s)&nbsp;&nbsp;[![Chat][gitter-badge]][gitter-link]
 =========
 
 ![architecture](docs/Weather4s-Architecture.png)

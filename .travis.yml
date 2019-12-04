@@ -1,0 +1,21 @@
+sudo: required
+services:
+  - docker
+language: scala
+scala:
+  - 2.13.1
+jdk:
+  - openjdk8
+cache:
+  directories:
+  - "$HOME/.cache"
+  - "$HOME/.coursier/cache/"
+  - "$HOME/.ivy2/cache"
+  - "$HOME/.sbt/boot/"
+before_cache:
+  - cleanup_cache
+script:
+  - sbt clean test:compile it:compile test it:test
+branches:
+  only:
+  - master
