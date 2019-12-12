@@ -3,13 +3,21 @@ package io.sherpair.w4s.auth
 import java.nio.charset.StandardCharsets.UTF_8
 
 import io.sherpair.w4s.Fixtures
-import io.sherpair.w4s.auth.domain.{Crypt, Member, SignupRequest, Token}
+import io.sherpair.w4s.auth.domain.{specials, Crypt, Member, SignupRequest, Token}
+import org.scalacheck.Gen
 import tsec.common.SecureRandomId
 import tsec.passwordhashers.PasswordHash
 
 trait MemberFixtures extends Fixtures {
 
-  def fakeSecret: PasswordHash[Crypt] = PasswordHash[Crypt](unicodeStr(16))
+  def fakeSecret: PasswordHash[Crypt] = PasswordHash[Crypt](genSecretAsString)
+
+  def genSecretAsString: String =
+    (1 to 4).foldLeft("") { (acc, _) =>
+      acc + oneGen(Gen.alphaLowerChar) + oneGen(Gen.alphaUpperChar) + oneGen(Gen.numChar) + oneGen(Gen.oneOf(specials))
+    }
+
+  def genSecret: Array[Byte] = genSecretAsString.getBytes(UTF_8)
 
   def genMember(active: Boolean = true): Member = new Member(
     fakeId, alphaNum, alphaNum, alphaNum, email("sherpair.io"),
@@ -19,7 +27,7 @@ trait MemberFixtures extends Fixtures {
   def genSignupRequest: SignupRequest = {
     val m: Member = genMember()
     SignupRequest(
-      m.accountId, m.firstName, m.lastName, m.email, m.geoId, m.country, unicodeStr(16).getBytes(UTF_8)
+      m.accountId, m.firstName, m.lastName, m.email, m.geoId, m.country, genSecret
     )
   }
 }

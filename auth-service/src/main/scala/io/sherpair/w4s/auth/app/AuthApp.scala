@@ -16,9 +16,9 @@ import org.http4s.dsl.Http4sDsl
 import tsec.common.SecureRandomId
 import tsec.passwordhashers.{PasswordHash, PasswordHasher}
 
-class AuthApp[F[_]: Sync](
+class AuthApp[F[_]](
     auth: Authenticator[F])(
-    implicit C: AuthConfig, E: EntityEncoder[F, Member], L: Logger[F], R: RepositoryMemberOps[F]
+    implicit C: AuthConfig, E: EntityEncoder[F, Member], L: Logger[F], R: RepositoryMemberOps[F], S: Sync[F]
 ) extends Http4sDsl[F] {
 
   implicit val passwordHasher: PasswordHasher[F, Crypt] = Crypt.syncPasswordHasher
@@ -72,12 +72,16 @@ class AuthApp[F[_]: Sync](
 
   private def signup(request: Request[F]): F[Response[F]] =
     request.decode[SignupRequest] { signupRequest =>
-      R.insert(signupRequest)
-        .flatTap(auth.sendToken(_, Activation))
-        .flatMap(member => Created(member))
-        .recoverWith {
-          case UniqueViolation(msg) => Conflict(msg)
-        }
+      S.delay(signupRequest.hasLegalSecret).ifM(
+        R.insert(signupRequest)
+          .flatTap(auth.sendToken(_, Activation))
+          .flatMap(Created(_))
+          .recoverWith {
+            case UniqueViolation(msg) => Conflict(msg)
+          },
+
+        NotAcceptable(signupRequest.illegalSecret)
+      )
     }
 
   private def validateMember(request: Request[F], authAction: AuthAction): F[Response[F]] =

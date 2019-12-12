@@ -208,6 +208,8 @@ paths:
           description: No Content
         '404':
           description: Member is not known or is not active
+        '406':
+          description: Illegal secret. Must contain uppercase and lowercase letters, digits and special characters
   /signin:
     post:
       summary: Member signin
@@ -242,6 +244,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/member'
+        '406':
+          description: Illegal secret. Must contain uppercase and lowercase letters, digits and special characters
         '409':
           description: AccountId and/or email given are already taken by another member
 components:

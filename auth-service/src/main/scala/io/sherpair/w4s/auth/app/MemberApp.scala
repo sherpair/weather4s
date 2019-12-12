@@ -18,9 +18,9 @@ import org.http4s.{AuthedRequest, AuthedRoutes, EntityDecoder, EntityEncoder, Re
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 
-class MemberApp[F[_]: Sync](
+class MemberApp[F[_]](
     auth: Authenticator[F])(
-    implicit C: AuthConfig, E: EntityEncoder[F, Member], L: Logger[F], R: RepositoryMemberOps[F]
+    implicit C: AuthConfig, E: EntityEncoder[F, Member], L: Logger[F], R: RepositoryMemberOps[F], S: Sync[F]
 ) extends Http4sDsl[F] {
 
   implicit val secretDecoder: EntityDecoder[F, MemberRequest] = jsonOf
@@ -78,7 +78,10 @@ class MemberApp[F[_]: Sync](
 
   private def secretUpdate(request: AuthedRequest[F, ClaimContent], id: Long): F[Response[F]] =
     request.req.decode[MemberRequest] { memberRequest =>
-      R.update(id, memberRequest.secret) >>= { noContentResponse(_, id) }
+      S.delay(memberRequest.hasLegalSecret).ifM(
+        R.update(id, memberRequest.secret) >>= { noContentResponse(_, id) },
+        NotAcceptable(memberRequest.illegalSecret)
+      )
     }
 
   private def validateMember(

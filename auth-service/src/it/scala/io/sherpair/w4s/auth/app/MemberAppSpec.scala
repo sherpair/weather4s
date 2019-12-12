@@ -278,7 +278,7 @@ class MemberAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
 
   "POST -> /auth/secret/{id}" should {
     "update an existing active member's secret and return NoContent after sign in with the new secret" in  {
-      val expectedSecret = unicodeStr(16).getBytes(UTF_8)
+      val expectedSecret = genSecret
 
       val response = DoobieRepository[IO].use { implicit R =>
         R.memberRepositoryOps >>= { implicit RM =>
@@ -314,7 +314,7 @@ class MemberAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
               withMemberAppRoutes(
                 withMemberAuth[IO](m.id),
                 Request[IO](POST, unsafeFromString(s"${aC.root}/secret/${m.id}")).withEntity(
-                  MemberRequest("", unicodeStr(16).getBytes(UTF_8))
+                  MemberRequest("", genSecret)
                 )
               )
             }

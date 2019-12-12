@@ -30,7 +30,7 @@ trait Fixtures {
     throw new RuntimeException(s"scalacheck.Gen.sample failed after ${attempts} attempts!!")
 
   /* Gen[T].sample might fail (and returning None) */
-  def oneGen[T](gen: Gen[T]): T =
+  def oneGen[T](gen: => Gen[T]): T =
     FlatMap[Id].tailRecM[Int, T](attempts) { attempt =>
       gen.sample.fold(if (attempt == 0) failedGen[T] else (attempt - 1).asLeft[T])(_.asRight[Int])
     }
