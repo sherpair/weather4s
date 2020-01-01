@@ -6,12 +6,13 @@ import cats.effect.Sync
 import cats.syntax.option._
 import doobie.{FC, Query0, Update0}
 import doobie.free.connection.ConnectionIO
+import doobie.implicits.legacy.instant._
 import doobie.postgres.implicits.pgEnumStringOpt
 import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
 import doobie.syntax.applicativeerror._
 import doobie.syntax.string._
-import doobie.util.Meta
 import doobie.util.fragment.Fragment.const
+import doobie.util.meta.Meta
 import io.sherpair.w4s.auth.domain.{Crypt, Member, SignupRequest, UniqueViolation, UpdateRequest}
 import io.sherpair.w4s.domain.Role
 import tsec.passwordhashers.PasswordHash

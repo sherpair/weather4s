@@ -7,10 +7,11 @@ import scala.concurrent.duration.FiniteDuration
 import cats.effect.Sync
 import doobie.{FC, Query0, Update0}
 import doobie.free.connection.ConnectionIO
+import doobie.implicits.legacy.instant._
 import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
 import doobie.syntax.applicativeerror._
 import doobie.syntax.string._
-import doobie.util.Meta
+import doobie.util.meta.Meta
 import io.sherpair.w4s.auth.domain.{Member, Token, UniqueViolation}
 import tsec.common.SecureRandomId
 
