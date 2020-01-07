@@ -17,7 +17,7 @@ import tsec.common.SecureRandomId
 import tsec.passwordhashers.{PasswordHash, PasswordHasher}
 
 class AuthApp[F[_]](
-    auth: Authenticator[F])(
+    auth: Authenticator[F], tokenOps: TokenOps[F])(
     implicit C: AuthConfig, E: EntityEncoder[F, Member], L: Logger[F], R: RepositoryMemberOps[F], S: Sync[F]
 ) extends Http4sDsl[F] {
 
@@ -37,11 +37,11 @@ class AuthApp[F[_]](
   }
 
   private def activation(tokenId: String): F[Response[F]] =
-    auth.retrieveToken(SecureRandomId.coerce(tokenId)) >>= {
+    tokenOps.retrieve(SecureRandomId.coerce(tokenId)) >>= {
       _.fold(NotFound()) { token =>
         R.find(token.memberId) >>= {
           _.fold(NotFound()) {
-            auth.deleteToken(token) *> enableMember(_)
+            tokenOps.delete(token) *> enableMember(_)
           }
         }
       }
@@ -60,8 +60,8 @@ class AuthApp[F[_]](
   private def notFound(key: String): F[Response[F]] = NotFound(s"Member(${key}) is not known")
 
   private def resendTokenOnRateLimiting(member: Member, emailType: EmailType): F[Response[F]] =
-    auth.deleteTokenIfOlderThan(C.token.rateLimit, member)
-      .ifM(auth.sendToken(member, emailType) *> NoContent(), TooManyRequests(C.token.rateLimit.toString))
+    tokenOps.deleteIfOlderThan(C.token.rateLimit, member)
+      .ifM(tokenOps.send(member, emailType) *> NoContent(), TooManyRequests(C.token.rateLimit.toString))
 
   private def resendActivationToken(member: Member): F[Response[F]] =
     if (member.active) NotAcceptable("Already active")
@@ -74,7 +74,7 @@ class AuthApp[F[_]](
     request.decode[SignupRequest] { signupRequest =>
       S.delay(signupRequest.hasLegalSecret).ifM(
         R.insert(signupRequest)
-          .flatTap(auth.sendToken(_, Activation))
+          .flatTap(tokenOps.send(_, Activation))
           .flatMap(Created(_))
           .recoverWith {
             case UniqueViolation(msg) => Conflict(msg)

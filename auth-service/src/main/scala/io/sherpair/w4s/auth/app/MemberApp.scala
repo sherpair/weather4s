@@ -19,7 +19,7 @@ import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 
 class MemberApp[F[_]](
-    auth: Authenticator[F])(
+    auth: Authenticator[F], tokenOps: TokenOps[F])(
     implicit C: AuthConfig, E: EntityEncoder[F, Member], L: Logger[F], R: RepositoryMemberOps[F], S: Sync[F]
 ) extends Http4sDsl[F] {
 
@@ -49,7 +49,7 @@ class MemberApp[F[_]](
   private def emailUpdate(request: AuthedRequest[F, ClaimContent], id: Long): F[Response[F]] =
     request.req.as[MemberRequest] >>= { memberRequest =>
       val result = R.update(id, memberRequest.accountId) >>= {
-        _.fold(notFoundResponse(id))(auth.sendToken(_, Activation) *> NoContent())
+        _.fold(notFoundResponse(id))(tokenOps.send(_, Activation) *> NoContent())
       }
 
       result.recoverWith {

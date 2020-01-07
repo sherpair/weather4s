@@ -369,8 +369,9 @@ class MemberAppSpec extends AuthenticatorSpec with MemberFixtures with FakeAuth 
   ): IO[Response[IO]] = {
     R.tokenRepositoryOps >>= { implicit RT =>
       val (jwtAlgorithm, privateKey) = withDataForAuthenticator
-      val authenticator = Authenticator[IO](jwtAlgorithm, postman, privateKey)
-      Router((aC.root, authoriser(new MemberApp[IO](authenticator).routes))).orNotFound.run(request)
+      val authenticator = Authenticator[IO](jwtAlgorithm, privateKey)
+      val tokenOps = TokenOps[IO](postman)
+      Router((aC.root, authoriser(new MemberApp[IO](authenticator, tokenOps).routes))).orNotFound.run(request)
     }
   }
 }

@@ -35,10 +35,11 @@ object Routes {
       authoriser <- Resource.liftF(Authoriser[F](Claims.audAuth, jwtAlgorithm))
 
       routes <- Resource.liftF(CE[F].delay {
-        val authenticator = Authenticator[F](jwtAlgorithm, postman, privateKey)
+        val authenticator = Authenticator[F](jwtAlgorithm, privateKey)
+        val tokenOps = TokenOps[F](postman)
         new ApiApp[F].routes <+>
-        new AuthApp[F](authenticator).routes <+>
-        authoriser(new MemberApp[F](authenticator).routes) <+>
+        new AuthApp[F](authenticator, tokenOps).routes <+>
+        authoriser(new MemberApp[F](authenticator, tokenOps).routes) <+>
         authoriser(new Monitoring[F].routes)
       })
     }
