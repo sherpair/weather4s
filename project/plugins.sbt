@@ -6,7 +6,7 @@ addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
 addSbtPlugin("com.typesafe.sbt" % "sbt-git" % "1.0.0")
 
 // sbt headerCreate    sbt headerCheck
-addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.3.1")
+addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.4.0")
 
 // enablePlugins(JmhPlugin)
 // addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.3.7")
@@ -24,7 +24,7 @@ addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
 // sbt "scalafix RemoveUnusedImports"
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.9.11")
 
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.2.1")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.3.0")
 addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "1.0.0")
 
 /* sbt clean coverage test (it:test)
