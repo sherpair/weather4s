@@ -8,6 +8,7 @@ object AuthAction extends Enum[AuthAction] with CirceEnum[AuthAction] {
   val values = findValues
 
   case object ActivationExpired extends AuthAction
+  case object ChangeEMailExpired extends AuthAction
   case object Signin extends AuthAction
 }
 

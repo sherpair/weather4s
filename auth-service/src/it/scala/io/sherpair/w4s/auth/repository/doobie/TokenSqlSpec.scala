@@ -19,11 +19,11 @@ class TokenSqlSpec extends TransactorSpec with TokenFixtures with MemberFixtures
       check(findSql(token.id))
       check(deleteSql(token.id))
 
-      check(deleteIfOlderThanSql(2 hours, genMember()))
+      check(deleteIfOlderThanSql(2 hours, genMember(), token.kind))
 
       check(countSql)
       check(emptySql)
-      check(findSql(SecureRandomId.Interactive.generate))
+      check(findSql(SecureRandomId.Interactive.generate, token.kind))
       check(listSql)
       check(subsetSql("country", 100L, 0L))
     }

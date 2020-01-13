@@ -16,10 +16,13 @@ CREATE TABLE IF NOT EXISTS members (
   created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')
 );
 
+CREATE TYPE KIND AS ENUM ('Activation', 'ChangeEMail', 'Refresh');
+
 CREATE TABLE IF NOT EXISTS tokens (
           id BIGSERIAL PRIMARY KEY,
     token_id      TEXT NOT NULL UNIQUE,
    member_id    BIGINT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        kind      KIND NOT NULL,
  expiry_date TIMESTAMP NOT NULL,
   created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')
 );

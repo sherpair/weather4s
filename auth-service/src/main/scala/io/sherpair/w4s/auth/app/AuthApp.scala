@@ -5,9 +5,10 @@ import cats.syntax.applicativeError._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import io.sherpair.w4s.auth.config.AuthConfig
-import io.sherpair.w4s.auth.domain.{AuthAction, Crypt, EmailType, Member, MemberRequest, SignupRequest, UniqueViolation}
+import io.sherpair.w4s.auth.domain.{
+  AuthAction, Crypt, EmailType, Kind, Member, MemberRequest, SignupRequest, UniqueViolation
+}
 import io.sherpair.w4s.auth.domain.AuthAction._
-import io.sherpair.w4s.auth.domain.EmailType.Activation
 import io.sherpair.w4s.auth.repository.RepositoryMemberOps
 import io.sherpair.w4s.domain.Logger
 import org.http4s.{EntityDecoder, EntityEncoder, HttpRoutes, Request, Response}
@@ -16,8 +17,7 @@ import org.http4s.dsl.Http4sDsl
 import tsec.common.SecureRandomId
 import tsec.passwordhashers.{PasswordHash, PasswordHasher}
 
-class AuthApp[F[_]](
-    auth: Authenticator[F], tokenOps: TokenOps[F])(
+class AuthApp[F[_]](tokenOps: TokenOps[F])(
     implicit C: AuthConfig, E: EntityEncoder[F, Member], L: Logger[F], R: RepositoryMemberOps[F], S: Sync[F]
 ) extends Http4sDsl[F] {
 
@@ -27,17 +27,21 @@ class AuthApp[F[_]](
   implicit val signupRequestDecoder: EntityDecoder[F, SignupRequest] = jsonOf
 
   val routes: HttpRoutes[F] = HttpRoutes.of[F] {
-    case            GET -> Root / "account-activation" / tokenId => activation(tokenId)
+    case            GET -> Root / "account-activation" / tokenId => activation(tokenId, Kind.Activation)
 
-    case request @ POST -> Root / "expired-token" => validateMember(request, ActivationExpired)
+    case            GET -> Root / "change-email-confirmed" / tokenId => activation(tokenId, Kind.ChangeEMail)
+
+    case request @ POST -> Root / "activation-expired" => validateMember(request, ActivationExpired)
+
+    case request @ POST -> Root / "change-email-expired" => validateMember(request, ChangeEMailExpired)
 
     case request @ POST -> Root / "signin" => validateMember(request, Signin)
 
     case request @ POST -> Root / "signup" => signup(request)
   }
 
-  private def activation(tokenId: String): F[Response[F]] =
-    tokenOps.retrieve(SecureRandomId.coerce(tokenId)) >>= {
+  private def activation(tokenId: String, kind: Kind): F[Response[F]] =
+    tokenOps.retrieve(SecureRandomId.coerce(tokenId), kind) >>= {
       _.fold(NotFound()) { token =>
         R.find(token.memberId) >>= {
           _.fold(NotFound()) {
@@ -54,27 +58,30 @@ class AuthApp[F[_]](
       else L.error(s"${member} not enabled??") *> InternalServerError()
     }
 
-      private def fieldId(accountId: String): String =
+  private def fieldId(accountId: String): String =
     if (accountId.indexOf('@') > 0 && accountId.count(_ == '@') == 1) "email" else "account_id"
 
   private def notFound(key: String): F[Response[F]] = NotFound(s"Member(${key}) is not known")
 
-  private def resendTokenOnRateLimiting(member: Member, emailType: EmailType): F[Response[F]] =
-    tokenOps.deleteIfOlderThan(C.token.rateLimit, member)
-      .ifM(tokenOps.send(member, emailType) *> NoContent(), TooManyRequests(C.token.rateLimit.toString))
-
-  private def resendActivationToken(member: Member): F[Response[F]] =
+  private def resendToken(member: Member, kind: Kind, emailType: EmailType): F[Response[F]] =
     if (member.active) NotAcceptable("Already active")
-    else resendTokenOnRateLimiting(member, Activation)
+    else resendTokenOnRateLimiting(member, kind, emailType)
+
+  private def resendTokenOnRateLimiting(member: Member, kind: Kind, emailType: EmailType): F[Response[F]] =
+    tokenOps.deleteIfOlderThan(C.token.rateLimit, member, kind)
+      .ifM(
+        tokenOps.send(member, kind, emailType) *> NoContent(),
+        TooManyRequests(C.token.rateLimit.toString)
+      )
 
   private def signinResponse(member: Member): F[Response[F]] =
-    if (member.active) auth.addJwtToAuthorizationHeader(NoContent(), member) else Forbidden("Inactive")
+    if (member.active) tokenOps.addTokensToResponse(member, NoContent()) else Forbidden("Inactive")
 
   private def signup(request: Request[F]): F[Response[F]] =
     request.decode[SignupRequest] { signupRequest =>
       S.delay(signupRequest.hasLegalSecret).ifM(
         R.insert(signupRequest)
-          .flatTap(tokenOps.send(_, Activation))
+          .flatTap(tokenOps.send(_, Kind.Activation, EmailType.Activation))
           .flatMap(Created(_))
           .recoverWith {
             case UniqueViolation(msg) => Conflict(msg)
@@ -95,7 +102,8 @@ class AuthApp[F[_]](
       memberWithSecret: (Member, String), memberRequest: MemberRequest, authAction: AuthAction
   ): F[Response[F]] =
     authAction match {
-      case ActivationExpired => resendActivationToken(memberWithSecret._1)
+      case ActivationExpired => resendToken(memberWithSecret._1, Kind.Activation, EmailType.Activation)
+      case ChangeEMailExpired => resendToken(memberWithSecret._1, Kind.ChangeEMail, EmailType.ChangeEMail)
       case Signin =>
         Crypt.checkpwBool[F](memberRequest.secret, PasswordHash[Crypt](memberWithSecret._2))
           .ifM(signinResponse(memberWithSecret._1), notFound(memberRequest.accountId))

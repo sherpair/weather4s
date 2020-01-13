@@ -8,7 +8,7 @@ import doobie.syntax.connectionio._
 import doobie.syntax.stream._
 import doobie.util.transactor.Transactor
 import fs2.Stream
-import io.sherpair.w4s.auth.domain.{Member, Token}
+import io.sherpair.w4s.auth.domain.{Kind, Member, Token}
 import io.sherpair.w4s.auth.repository.RepositoryTokenOps
 import tsec.common.SecureRandomId
 
@@ -24,15 +24,16 @@ private[doobie] class DoobieRepositoryTokenOps[F[_]: Sync](tx: Transactor[F]) ex
 
   override def delete(tokenId: SecureRandomId): F[Unit] = deleteSql(tokenId).run.void.transact(tx)
 
-  override def deleteIfOlderThan(rateLimit: FiniteDuration, member: Member): F[Boolean] =
-    deleteIfOlderThanSql(rateLimit, member).run.map[Boolean](_ > 0).transact(tx)
+  override def deleteIfOlderThan(rateLimit: FiniteDuration, member: Member, kind: Kind): F[Boolean] =
+    deleteIfOlderThanSql(rateLimit, member, kind).run.map[Boolean](_ > 0).transact(tx)
 
   /* Test-only */
   override def empty: F[Int] = emptySql.run.map[Int](identity).transact(tx)
 
   override def find(id: Long): F[Option[Token]] = findSql(id).option.transact(tx)
 
-  override def find(tokenId: SecureRandomId): F[Option[Token]] = findSql(tokenId).option.transact(tx)
+  override def find(tokenId: SecureRandomId, kind: Kind): F[Option[Token]] =
+    findSql(tokenId, kind).option.transact(tx)
 
   override def insert(token: Token): F[Token] = insertSql(token).transact(tx)
 

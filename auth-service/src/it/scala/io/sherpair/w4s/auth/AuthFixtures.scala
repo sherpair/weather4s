@@ -3,7 +3,7 @@ package io.sherpair.w4s.auth
 import java.nio.charset.StandardCharsets.UTF_8
 
 import io.sherpair.w4s.Fixtures
-import io.sherpair.w4s.auth.domain.{specials, Crypt, Member, SignupRequest, Token}
+import io.sherpair.w4s.auth.domain.{specials, Crypt, Kind, Member, SignupRequest, Token}
 import org.scalacheck.Gen
 import tsec.common.SecureRandomId
 import tsec.passwordhashers.PasswordHash
@@ -34,6 +34,6 @@ trait MemberFixtures extends Fixtures {
 
 trait TokenFixtures extends Fixtures with MemberFixtures {
 
-  def genToken(member: Member): Token =
-    Token(fakeId, SecureRandomId.Interactive.generate, member.id, futureInstant, pastInstant)
+  def genToken(member: Member, kind: Kind = Kind.Activation): Token =
+    Token(fakeId, SecureRandomId.Interactive.generate, member.id, kind, futureInstant, pastInstant)
 }

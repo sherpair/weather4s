@@ -5,16 +5,16 @@ import java.security.{KeyFactory, PrivateKey}
 import java.security.spec.PKCS8EncodedKeySpec
 
 import cats.Applicative
-import cats.effect.{Blocker, ConcurrentEffect => CE, ContextShift => CS, Resource, Sync}
+import cats.effect.{Blocker, Resource, Sync, ConcurrentEffect => CE, ContextShift => CS}
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.semigroupk._
-import io.sherpair.w4s.auth.{jwtAlgorithm, Authoriser, Claims}
+import io.sherpair.w4s.auth.{Authoriser, Claims, jwtAlgorithm}
 import io.sherpair.w4s.auth.config.{AuthConfig, MaybePostman, Postman, Smtp}
-import io.sherpair.w4s.auth.domain.EmailType.{Activation, ResetSecret}
+import io.sherpair.w4s.auth.domain.EmailType.{Activation, ChangeEMail, ResetSecret}
 import io.sherpair.w4s.auth.domain.Member
 import io.sherpair.w4s.auth.repository.{Repository, RepositoryMemberOps, RepositoryTokenOps}
-import io.sherpair.w4s.domain.{blockerForIOtasks, loadResource, Logger}
+import io.sherpair.w4s.domain.{Logger, blockerForIOtasks, loadResource}
 import io.sherpair.w4s.http.ApiApp
 import org.http4s.{EntityEncoder, HttpRoutes}
 import org.http4s.circe.jsonEncoderOf
@@ -36,10 +36,10 @@ object Routes {
 
       routes <- Resource.liftF(CE[F].delay {
         val authenticator = Authenticator[F](jwtAlgorithm, privateKey)
-        val tokenOps = TokenOps[F](postman)
+        val tokenOps = TokenOps[F](authenticator, postman)
         new ApiApp[F].routes <+>
-        new AuthApp[F](authenticator, tokenOps).routes <+>
-        authoriser(new MemberApp[F](authenticator, tokenOps).routes) <+>
+        new AuthApp[F](tokenOps).routes <+>
+        authoriser(new MemberApp[F](tokenOps).routes) <+>
         authoriser(new Monitoring[F].routes)
       })
     }
@@ -58,9 +58,11 @@ object Routes {
   private def withPostman[F[_]: CS](implicit B: Blocker, C: AuthConfig, L: Logger[F], S: Sync[F]): F[MaybePostman] =
     for {
       activationTemplate <- loadResource(s"/templates/${Activation.template}")
+      changeEMailTemplate <- loadResource(s"/templates/${ChangeEMail.template}")
       resetSecretTemplate <- loadResource(s"/templates/${ResetSecret.template}")
       templateMap <- S.delay(Map[String, String](
         Activation.reason -> new String(activationTemplate, UTF_8),
+        ChangeEMail.reason -> new String(changeEMailTemplate, UTF_8),
         ResetSecret.reason -> new String(resetSecretTemplate, UTF_8)
       ))
       postman <- S.delay(new Postman(Smtp(), templateMap))

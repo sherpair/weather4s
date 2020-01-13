@@ -6,8 +6,9 @@ import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.semigroupk._
 import io.sherpair.w4s.auth.config.AuthConfig
-import io.sherpair.w4s.auth.domain.{Member, MemberAction, MemberRequest, UniqueViolation, UpdateRequest}
-import io.sherpair.w4s.auth.domain.EmailType.Activation
+import io.sherpair.w4s.auth.domain.{
+  EmailType, Kind, Member, MemberAction, MemberRequest, UniqueViolation, UpdateRequest
+}
 import io.sherpair.w4s.auth.domain.MemberAction.{ChangeEmail, ChangeSecret, MemberDelete, MemberUpdate}
 import io.sherpair.w4s.auth.masterOnly
 import io.sherpair.w4s.auth.repository.RepositoryMemberOps
@@ -18,8 +19,7 @@ import org.http4s.{AuthedRequest, AuthedRoutes, EntityDecoder, EntityEncoder, Re
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 
-class MemberApp[F[_]](
-    auth: Authenticator[F], tokenOps: TokenOps[F])(
+class MemberApp[F[_]](tokenOps: TokenOps[F])(
     implicit C: AuthConfig, E: EntityEncoder[F, Member], L: Logger[F], R: RepositoryMemberOps[F], S: Sync[F]
 ) extends Http4sDsl[F] {
 
@@ -49,7 +49,7 @@ class MemberApp[F[_]](
   private def emailUpdate(request: AuthedRequest[F, ClaimContent], id: Long): F[Response[F]] =
     request.req.as[MemberRequest] >>= { memberRequest =>
       val result = R.update(id, memberRequest.accountId) >>= {
-        _.fold(notFoundResponse(id))(tokenOps.send(_, Activation) *> NoContent())
+        _.fold(notFoundResponse(id))(tokenOps.send(_, Kind.ChangeEMail, EmailType.ChangeEMail) *> NoContent())
       }
 
       result.recoverWith {
@@ -63,7 +63,7 @@ class MemberApp[F[_]](
   private def memberUpdate(request: AuthedRequest[F, ClaimContent], id: Long): F[Response[F]] =
     request.req.as[UpdateRequest] >>= { updateRequest =>
       val result = R.update(id, updateRequest) >>= {
-        _.fold(notFoundResponse(id))(auth.addJwtToAuthorizationHeader(NoContent(), _))
+        _.fold(notFoundResponse(id))(tokenOps.addTokensToResponse(_, NoContent()))
       }
 
       result.recoverWith {

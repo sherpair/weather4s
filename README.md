@@ -157,21 +157,21 @@ Note that the following links are only valid with the *project-default* configur
 $ echo '{"accountId":"anAccount","firstName":"FN","lastName":"LN","email":"<actual email>@<email server>","geoId":"123456","country":"GB","secret":[97, 80, 97, 115, 115, 119, 111, 114, 100]}' | \
     http --verify no POST https://0.0.0.0:8442/auth/signup
 ```
-> HTTP/1.1 201 Created  
-Content-Length: 206  
-Content-Type: application/json  
-Date: Wed, 27 Nov 2019 14:42:56 GMT  
-{  
-&nbsp;&nbsp;"accountId": "anAccount",  
-&nbsp;&nbsp;"active": false,  
-&nbsp;&nbsp;"country": "GB",  
-&nbsp;&nbsp;"createdAt": "2019-11-27T14:42:49.099401Z",  
-&nbsp;&nbsp;"email": &lt;actual email&gt;@&lt;email server&gt;",  
-&nbsp;&nbsp;"firstName": "FN",  
-&nbsp;&nbsp;"geoId": "123456",  
-&nbsp;&nbsp;"id": 5,  
-&nbsp;&nbsp;"lastName": "LN",  
-&nbsp;&nbsp;"role": "Member"  
+> HTTP/1.1 201 Created
+Content-Length: 206
+Content-Type: application/json
+Date: Wed, 27 Nov 2019 14:42:56 GMT
+{
+&nbsp;&nbsp;"accountId": "anAccount",
+&nbsp;&nbsp;"active": false,
+&nbsp;&nbsp;"country": "GB",
+&nbsp;&nbsp;"createdAt": "2019-11-27T14:42:49.099401Z",
+&nbsp;&nbsp;"email": &lt;actual email&gt;@&lt;email server&gt;",
+&nbsp;&nbsp;"firstName": "FN",
+&nbsp;&nbsp;"geoId": "123456",
+&nbsp;&nbsp;"id": 5,
+&nbsp;&nbsp;"lastName": "LN",
+&nbsp;&nbsp;"role": "Member"
 }
 
 **Note that the new member account has to be confirmed before proceed with the next examples!!**
@@ -181,84 +181,85 @@ Date: Wed, 27 Nov 2019 14:42:56 GMT
 $ echo '{"accountId":"anAccount","secret":[97, 80, 97, 115, 115, 119, 111, 114, 100]}' | \
     http --verify no POST https://0.0.0.0:8442/auth/signin
 ```
-> HTTP/1.1 204 No Content  
-Authorization: Bearer  eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwic3ViIjoiNSIsImF1ZCI6WyJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvZ2VvIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvbG9hZGVyIl0sImV4cCI6MTU3NDg3NDU0NiwibmJmIjoxNTc0ODY3MzQ2LCJpYXQiOjE1NzQ4NjczNDYsImlkIjo1LCJhY2NvdW50SWQiOiJ1Y2xpbyIsImZpcnN0TmFtZSI6IlVjbGlvIiwibGFzdE5hbWUiOiJEaW5vYmkiLCJnZW9JZCI6IjEyMzQ1NiIsImNvdW50cnkiOiJJVCIsInJvbGUiOiJNZW1iZXIiLCJjcmVhdGVkQXQiOiIyMDE5LTExLTI3VDE0OjQyOjQ5LjA5OTQwMVoifQ.TgrTEP8Mlj8oF2SgIyvenoZ6itpYzpkk7fnqRnir8qy7-IkD06q5yRLESCT38fFTxXhF8gPgLnJ_smfkgDZ-5cEyNyBf6MNWJhtumxvFLt0Bm7iXdlz4IQStFEOKomuhaNXpNoykl0pufgj3Qow9ECtNoKbA8JPwJyyGJOMiF9whNM1mQDCguY8DyLTODnPmjP8zeXVAHfJXVgNHam5akUWn_VcAw38c5TtV58NZlv7fnr_qxbXLItsimr1j-QGcBeuPxCIgE_lu2qLazfN2cuWwBUbWfEDCuE8fhbm2GxxoGAYS_FZsQ2_KNYkMRj2dNVb1CuKtjjlJQmwCZll-dg  
+> HTTP/1.1 204 No Content
+Authorization: Bearer  eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwic3ViIjoiNSIsImF1ZCI6WyJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvZ2VvIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvbG9hZGVyIl0sImV4cCI6MTU3NDg3NDU0NiwibmJmIjoxNTc0ODY3MzQ2LCJpYXQiOjE1NzQ4NjczNDYsImlkIjo1LCJhY2NvdW50SWQiOiJ1Y2xpbyIsImZpcnN0TmFtZSI6IlVjbGlvIiwibGFzdE5hbWUiOiJEaW5vYmkiLCJnZW9JZCI6IjEyMzQ1NiIsImNvdW50cnkiOiJJVCIsInJvbGUiOiJNZW1iZXIiLCJjcmVhdGVkQXQiOiIyMDE5LTExLTI3VDE0OjQyOjQ5LjA5OTQwMVoifQ.TgrTEP8Mlj8oF2SgIyvenoZ6itpYzpkk7fnqRnir8qy7-IkD06q5yRLESCT38fFTxXhF8gPgLnJ_smfkgDZ-5cEyNyBf6MNWJhtumxvFLt0Bm7iXdlz4IQStFEOKomuhaNXpNoykl0pufgj3Qow9ECtNoKbA8JPwJyyGJOMiF9whNM1mQDCguY8DyLTODnPmjP8zeXVAHfJXVgNHam5akUWn_VcAw38c5TtV58NZlv7fnr_qxbXLItsimr1j-QGcBeuPxCIgE_lu2qLazfN2cuWwBUbWfEDCuE8fhbm2GxxoGAYS_FZsQ2_KNYkMRj2dNVb1CuKtjjlJQmwCZll-dg
 Date: Wed, 27 Nov 2019 15:09:06 GMT
-
+Set-Cookie: refresh-token=18f1496ce539479a94680e1c79fc7216ca19e6de521fcf4a3f7b5e58fc7afeef; Expires=Thu, 28 Nov 2019 15:09:06 GMT; Secure; HttpOnly
+>
 - **List the available countries**
 ```shell
 $ http --verify no https://0.0.0.0:8443/geo/countries/available 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwic3ViIjoiNSIsImF1ZCI6WyJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvZ2VvIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvbG9hZGVyIl0sImV4cCI6MTU3NDg3NDU0NiwibmJmIjoxNTc0ODY3MzQ2LCJpYXQiOjE1NzQ4NjczNDYsImlkIjo1LCJhY2NvdW50SWQiOiJ1Y2xpbyIsImZpcnN0TmFtZSI6IlVjbGlvIiwibGFzdE5hbWUiOiJEaW5vYmkiLCJnZW9JZCI6IjEyMzQ1NiIsImNvdW50cnkiOiJJVCIsInJvbGUiOiJNZW1iZXIiLCJjcmVhdGVkQXQiOiIyMDE5LTExLTI3VDE0OjQyOjQ5LjA5OTQwMVoifQ.TgrTEP8Mlj8oF2SgIyvenoZ6itpYzpkk7fnqRnir8qy7-IkD06q5yRLESCT38fFTxXhF8gPgLnJ_smfkgDZ-5cEyNyBf6MNWJhtumxvFLt0Bm7iXdlz4IQStFEOKomuhaNXpNoykl0pufgj3Qow9ECtNoKbA8JPwJyyGJOMiF9whNM1mQDCguY8DyLTODnPmjP8zeXVAHfJXVgNHam5akUWn_VcAw38c5TtV58NZlv7fnr_qxbXLItsimr1j-QGcBeuPxCIgE_lu2qLazfN2cuWwBUbWfEDCuE8fhbm2GxxoGAYS_FZsQ2_KNYkMRj2dNVb1CuKtjjlJQmwCZll-dg'
 ```
-> HTTP/1.1 200 OK  
-Content-Type: application/json; charset=UTF-8  
-Date: Wed, 27 Nov 2019 15:25:24 GMT  
-Transfer-Encoding: chunked  
-[  
-&nbsp;&nbsp;{  
-&nbsp;&nbsp;&nbsp;&nbsp;"analyzer": "english",  
-&nbsp;&nbsp;&nbsp;&nbsp;"code": "gb",  
-&nbsp;&nbsp;&nbsp;&nbsp;"localities": 64210,  
-&nbsp;&nbsp;&nbsp;&nbsp;"name": "United Kingdom",  
-&nbsp;&nbsp;&nbsp;&nbsp;"updated": 1574346988978  
-&nbsp;&nbsp;},  
-&nbsp;&nbsp;{  
-&nbsp;&nbsp;&nbsp;&nbsp;"analyzer": "stop",  
-&nbsp;&nbsp;&nbsp;&nbsp;"code": "zw",  
-&nbsp;&nbsp;&nbsp;&nbsp;"localities": 24821,  
-&nbsp;&nbsp;&nbsp;&nbsp;"name": "Zimbabwe",  
-&nbsp;&nbsp;&nbsp;&nbsp;"updated": 1574523193335  
-&nbsp;&nbsp;},  
+> HTTP/1.1 200 OK
+Content-Type: application/json; charset=UTF-8
+Date: Wed, 27 Nov 2019 15:25:24 GMT
+Transfer-Encoding: chunked
+[
+&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;"analyzer": "english",
+&nbsp;&nbsp;&nbsp;&nbsp;"code": "gb",
+&nbsp;&nbsp;&nbsp;&nbsp;"localities": 64210,
+&nbsp;&nbsp;&nbsp;&nbsp;"name": "United Kingdom",
+&nbsp;&nbsp;&nbsp;&nbsp;"updated": 1574346988978
+&nbsp;&nbsp;},
+&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;"analyzer": "stop",
+&nbsp;&nbsp;&nbsp;&nbsp;"code": "zw",
+&nbsp;&nbsp;&nbsp;&nbsp;"localities": 24821,
+&nbsp;&nbsp;&nbsp;&nbsp;"name": "Zimbabwe",
+&nbsp;&nbsp;&nbsp;&nbsp;"updated": 1574523193335
+&nbsp;&nbsp;},
 ]
 
 - **Download a "*not-available-yet*" country**
 ```shell
 $ http --verify no PUT https://0.0.0.0:8443/geo/country/luxembourg 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwic3ViIjoiNSIsImF1ZCI6WyJodHRwczovL3NoZXJwYWlyLmlvL3dlYXRoZXI0cy9hdXRoIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvZ2VvIiwiaHR0cHM6Ly9zaGVycGFpci5pby93ZWF0aGVyNHMvbG9hZGVyIl0sImV4cCI6MTU3NDg3NDU0NiwibmJmIjoxNTc0ODY3MzQ2LCJpYXQiOjE1NzQ4NjczNDYsImlkIjo1LCJhY2NvdW50SWQiOiJ1Y2xpbyIsImZpcnN0TmFtZSI6IlVjbGlvIiwibGFzdE5hbWUiOiJEaW5vYmkiLCJnZW9JZCI6IjEyMzQ1NiIsImNvdW50cnkiOiJJVCIsInJvbGUiOiJNZW1iZXIiLCJjcmVhdGVkQXQiOiIyMDE5LTExLTI3VDE0OjQyOjQ5LjA5OTQwMVoifQ.TgrTEP8Mlj8oF2SgIyvenoZ6itpYzpkk7fnqRnir8qy7-IkD06q5yRLESCT38fFTxXhF8gPgLnJ_smfkgDZ-5cEyNyBf6MNWJhtumxvFLt0Bm7iXdlz4IQStFEOKomuhaNXpNoykl0pufgj3Qow9ECtNoKbA8JPwJyyGJOMiF9whNM1mQDCguY8DyLTODnPmjP8zeXVAHfJXVgNHam5akUWn_VcAw38c5TtV58NZlv7fnr_qxbXLItsimr1j-QGcBeuPxCIgE_lu2qLazfN2cuWwBUbWfEDCuE8fhbm2GxxoGAYS_FZsQ2_KNYkMRj2dNVb1CuKtjjlJQmwCZll-dg'
 ```
-> HTTP/1.1 204 No Content  
+> HTTP/1.1 204 No Content
 Date: Wed, 27 Nov 2019 15:33:08 GMT
 
 - **Suggest a locality**
 ```shell
 $ http --verify no https://0.0.0.0:8443/geo/suggest/gb/lond?maxSuggestions=3
 ```
-> HTTP/1.1 200 OK  
-Content-Type: application/json; charset=UTF-8  
-Date: Wed, 27 Nov 2019 15:38:25 GMT  
-Transfer-Encoding: chunked  
-[  
-&nbsp;&nbsp;{  
-&nbsp;&nbsp;&nbsp;&nbsp;"coord": {  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lat": 51.49227,  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lon": -0.30864  
-&nbsp;&nbsp;&nbsp;&nbsp;},  
-&nbsp;&nbsp;&nbsp;&nbsp;"name": {  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"input": "London",  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"weight": 8787892  
-&nbsp;&nbsp;&nbsp;&nbsp;},  
-&nbsp;&nbsp;&nbsp;&nbsp;"tz": "Europe/London"  
-&nbsp;&nbsp;},  
-&nbsp;&nbsp;{  
-&nbsp;&nbsp;&nbsp;&nbsp;"coord": {  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lat": 54.99721,  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lon": -7.30917  
-&nbsp;&nbsp;&nbsp;&nbsp;},  
-&nbsp;&nbsp;&nbsp;&nbsp;"name": {  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"input": "Londonderry County Borough",  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"weight": 87153  
-&nbsp;&nbsp;&nbsp;&nbsp;},  
-&nbsp;&nbsp;&nbsp;&nbsp;"tz": "Europe/London"  
-&nbsp;&nbsp;},  
-&nbsp;&nbsp;{  
-&nbsp;&nbsp;&nbsp;&nbsp;"coord": {  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lat": 52.89855,  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lon": -1.27136  
-&nbsp;&nbsp;&nbsp;&nbsp;},  
-&nbsp;&nbsp;&nbsp;&nbsp;"name": {  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"input": "Long Eaton",  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"weight": 47898  
-&nbsp;&nbsp;&nbsp;&nbsp;},  
-&nbsp;&nbsp;&nbsp;&nbsp;"tz": "Europe/London"  
-&nbsp;&nbsp;}  
+> HTTP/1.1 200 OK
+Content-Type: application/json; charset=UTF-8
+Date: Wed, 27 Nov 2019 15:38:25 GMT
+Transfer-Encoding: chunked
+[
+&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;"coord": {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lat": 51.49227,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lon": -0.30864
+&nbsp;&nbsp;&nbsp;&nbsp;},
+&nbsp;&nbsp;&nbsp;&nbsp;"name": {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"input": "London",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"weight": 8787892
+&nbsp;&nbsp;&nbsp;&nbsp;},
+&nbsp;&nbsp;&nbsp;&nbsp;"tz": "Europe/London"
+&nbsp;&nbsp;},
+&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;"coord": {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lat": 54.99721,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lon": -7.30917
+&nbsp;&nbsp;&nbsp;&nbsp;},
+&nbsp;&nbsp;&nbsp;&nbsp;"name": {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"input": "Londonderry County Borough",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"weight": 87153
+&nbsp;&nbsp;&nbsp;&nbsp;},
+&nbsp;&nbsp;&nbsp;&nbsp;"tz": "Europe/London"
+&nbsp;&nbsp;},
+&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;"coord": {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lat": 52.89855,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lon": -1.27136
+&nbsp;&nbsp;&nbsp;&nbsp;},
+&nbsp;&nbsp;&nbsp;&nbsp;"name": {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"input": "Long Eaton",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"weight": 47898
+&nbsp;&nbsp;&nbsp;&nbsp;},
+&nbsp;&nbsp;&nbsp;&nbsp;"tz": "Europe/London"
+&nbsp;&nbsp;}
 ]
 
 [cats-badge]: https://typelevel.org/cats/img/cats-badge-tiny.png

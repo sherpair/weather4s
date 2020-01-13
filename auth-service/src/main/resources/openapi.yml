@@ -12,7 +12,7 @@ paths:
   /account-activation/{tokenId}:
     get:
       summary: Member activation
-      description: Enable the member changing the `active` flag. The member can now sign in.
+      description: Confirm the member activation, setting the member to the `active` state. The member can now sign in.
       parameters:
         - name: tokenId
           in: path
@@ -29,6 +29,60 @@ paths:
                 $ref: '#/components/schemas/member'
         '404':
           description: The token or the member-id associated with the token were not found in the DB.
+  /activation-expired:
+    post:
+      summary: Activation token expired
+      description: The activation token has expired (or maybe the email was mistakenly deleted?) before the member could confirm it. The member, in addition to the secret, can ask a new token by using her accountId or her email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/member-request'
+      responses:
+        '204':
+          description: Token sent
+        '406':
+          description: The member is already `active`
+        '429':
+          description: A new token cannot be sent because the former is more recent than the set time threshold
+  /change-email-confirmed/{tokenId}:
+    get:
+      summary: Confirmation of the email modification
+      description: Confirm the email modification, setting the member to the `active` state. The member can now sign in again.
+      parameters:
+        - name: tokenId
+          in: path
+          description: ChangeEMail token. The token must be known by the DB.
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Member reactivated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/member'
+        '404':
+          description: The token or the member-id associated with the token were not found in the DB.
+  /change-email-expired:
+    post:
+      summary: ChangeEMail token expired
+      description: The ChangeEMail token has expired (or maybe the email was mistakenly deleted?) before the member could confirm it. The member, in addition to the secret, can ask a new token by using her accountId or her email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/member-request'
+      responses:
+        '204':
+          description: Token sent
+        '406':
+          description: The member is already `active`
+        '429':
+          description: A new token cannot be sent because the former is more recent than the set time threshold
   /email/{id}:
     post:
       tags:
@@ -59,23 +113,6 @@ paths:
           description: Member is not known or is not active
         '409':
           description: Email given is already taken by another member
-  /expired-token:
-    post:
-      summary: Activation token expired
-      description: The activation token has expired (or maybe the email was mistakenly deleted?) before the member could confirm it. The member, in addition to the secret, can ask a new token by using her accountId or her email.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/member-request'
-      responses:
-        '204':
-          description: Token sent
-        '406':
-          description: The member is already `active`
-        '429':
-          description: A new token cannot be sent because the former is more recent than the set time threshold
   /health:
     get:
       tags:

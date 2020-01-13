@@ -26,8 +26,8 @@ trait AuthenticatorSpec extends TransactorSpec {
     R.tokenRepositoryOps >>= { implicit RT =>
       val (jwtAlgorithm, privateKey) = withDataForAuthenticator
       val authenticator = Authenticator[IO](jwtAlgorithm, privateKey)
-      val tokenOps = TokenOps[IO](postman)
-      val routes = new AuthApp[IO](authenticator, tokenOps).routes
+      val tokenOps = TokenOps[IO](authenticator, postman)
+      val routes = new AuthApp[IO](tokenOps).routes
       Router((aC.root, routes)).orNotFound.run(request)
     }
   }

@@ -11,6 +11,10 @@ object EmailType extends Enum[EmailType] with CirceEnum[EmailType] {
     "Account activation", "account-activation", "activation.html"
   )
 
+  case object ChangeEMail extends EmailType(
+    "Change email", "change-email-confirmed", "change-email.html"
+  )
+
   case object ResetSecret extends EmailType(
     "Reset password", "reset-secret", "reset-secret.html"
   )
