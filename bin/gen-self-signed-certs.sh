@@ -20,5 +20,5 @@ openssl req -x509 -newkey rsa:4096 -sha256 -days 3560 -nodes -subj "/C=UK/O=Weat
     keytool -import -alias weather4s -storepass ${W4S_KEY_STORE_SECRET} -noprompt -trustcacerts \
             -file weather4s.crt -keystore weather4s.jks && \
       mkdir -p "$DIR/../shared/src/main/resources/ssl" && \
-        cp -fu weather4s.jks weather4s.p12 "$DIR/../shared/src/main/resources/ssl/"
+        cp -f weather4s.jks weather4s.p12 "$DIR/../shared/src/main/resources/ssl/"
 popd

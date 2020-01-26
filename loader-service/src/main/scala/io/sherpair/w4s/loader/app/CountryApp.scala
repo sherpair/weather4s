@@ -18,7 +18,7 @@ class CountryApp[F[_]: Sync](
     implicit C: LoaderConfig, L: Logger[F]
 ) extends Http4sDsl[F] {
 
-  implicit val countryEncoder: EntityDecoder[F, Country] = jsonOf[F, Country]
+  implicit val countryDecoder: EntityDecoder[F, Country] = jsonOf
 
   private val masterOnlyRoutes: AuthedRoutes[ClaimContent, F] =
     AuthedRoutes.of[ClaimContent, F] {

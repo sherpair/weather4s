@@ -40,7 +40,8 @@ class CacheHandler[F[_]: Sync: Timer] (
       _ <- cacheRef.cacheRenewal(Cache(meta.lastEngineUpdate, countries, cacheHandlerStopFlag))
       _ <- meta.logLastEngineUpdate
       _ <- logCountOfCountries(countries)
-    } yield unit
+    }
+    yield unit
 
   private def logCountOfCountries(countries: Countries): F[Unit] = {
     val size = countries.size

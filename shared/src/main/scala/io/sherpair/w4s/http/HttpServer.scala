@@ -41,11 +41,11 @@ object HttpServer {
 
 /*
    To start the Blaze Server concurrently and return the fiber (as a Resource)...
+    import cats.effect.syntax.concurrent._
     Resource.liftF(
       BlazeServerBuilder[F]
         .bindHttp(host.port, host.address)
         .withHttpApp(withMiddleware[F](routes))
-        .serve.compile.drain
-        .map(identity).start
+        .serve.compile.drain.start
     )
  */

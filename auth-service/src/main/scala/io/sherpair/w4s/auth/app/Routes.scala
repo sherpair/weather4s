@@ -5,16 +5,16 @@ import java.security.{KeyFactory, PrivateKey}
 import java.security.spec.PKCS8EncodedKeySpec
 
 import cats.Applicative
-import cats.effect.{Blocker, Resource, Sync, ConcurrentEffect => CE, ContextShift => CS}
+import cats.effect.{Blocker, ConcurrentEffect => CE, ContextShift => CS, Resource, Sync}
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.semigroupk._
-import io.sherpair.w4s.auth.{Authoriser, Claims, jwtAlgorithm}
+import io.sherpair.w4s.auth.{jwtAlgorithm, Authoriser, Claims}
 import io.sherpair.w4s.auth.config.{AuthConfig, MaybePostman, Postman, Smtp}
 import io.sherpair.w4s.auth.domain.EmailType.{Activation, ChangeEMail, ResetSecret}
 import io.sherpair.w4s.auth.domain.Member
 import io.sherpair.w4s.auth.repository.{Repository, RepositoryMemberOps, RepositoryTokenOps}
-import io.sherpair.w4s.domain.{Logger, blockerForIOtasks, loadResource}
+import io.sherpair.w4s.domain.{blockerForIOtasks, loadResource, Logger}
 import io.sherpair.w4s.http.ApiApp
 import org.http4s.{EntityEncoder, HttpRoutes}
 import org.http4s.circe.jsonEncoderOf

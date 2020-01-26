@@ -11,7 +11,7 @@ object Dependencies {
     val enumeratum = "1.5.15"
     val enumeratumCirce = "1.5.22"
     val fs2 = "2.1.0"
-    val flyway = "6.1.4"
+    val flyway = "6.2.0"
     val elastic4s = "7.3.1"
     val http4s = "0.21.0-M6"
     val javamail = "1.6.4"
@@ -24,7 +24,7 @@ object Dependencies {
     val scalacheck = "1.14.3"
     val scalatest = "3.1.0"
     val swagger = "3.24.3"
-    val testcontainers = "0.34.2"
+    val testcontainers = "0.35.0"
     val tsec = "0.2.0-M2"
     val webjars = "0.43"
   }
