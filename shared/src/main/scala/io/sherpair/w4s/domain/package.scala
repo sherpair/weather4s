@@ -46,7 +46,7 @@ package object domain {
 
   def loadResource[F[_]: CS: Sync](resource: String)(implicit B: Blocker, L: Logger[F]): F[Array[Byte]] =
     L.info(s"Loading resource(${resource})") *>
-      readInputStream(istream(resource), 4096, B).compile.to[Array]
+      readInputStream(istream(resource), 4096, B).compile.to(Array)
 
   private val threadSequence: AtomicLong = new AtomicLong(0L)
 

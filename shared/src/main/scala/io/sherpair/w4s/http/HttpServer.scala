@@ -25,7 +25,7 @@ object HttpServer {
 
       BlazeServerBuilder[F]
         .bindHttp(C.host.port, C.host.address)
-        .withSSLContext(sslContext)
+        .withSslContext(sslContext)
         .enableHttp2(true)
     }
 
